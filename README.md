@@ -6,6 +6,4 @@ Welcome to the Hackathon project repository.
 
 Coming soon...
 
-## License
 
-MIT
