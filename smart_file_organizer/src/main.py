@@ -27,7 +27,7 @@ from src.classification import (
 )
 from src.deduplication import DeduplicationEngine, PerceptualHashEngine
 from src.security import AESEncryptor, SecureArchiver, KeyDerivationService
-from src.actions import FileOperations, ConflictResolver, ConflictStrategy
+from src.actions import FileOperations, ConflictResolver, ConflictStrategy, HistoryTracker, RulesEngine
 from src.utils.logging_config import setup_logging, get_logger, LoggingConfig
 
 logger = get_logger(__name__)
@@ -126,6 +126,16 @@ class SmartFileOrganizer:
             quarantine_dir=self.config.organization.quarantine_directory
         )
         
+        # History tracking (NEW)
+        self.history = HistoryTracker(
+            base_directory=self.config.organization.base_directory
+        )
+        
+        # Custom rules engine (NEW)
+        self.rules_engine = RulesEngine(
+            base_directory=self.config.organization.base_directory
+        )
+        
         logger.info("All components initialized")
     
     def process_file(self, file_path: str) -> bool:
@@ -141,10 +151,14 @@ class SmartFileOrganizer:
         logger.info(f"Processing: {path.name}")
         
         try:
-            # Step 1: Check if file still exists
+            # Step 1: Check if file still exists and is actually a file
             if not path.exists():
                 logger.warning(f"File no longer exists: {path}")
                 return True  # Not an error
+            
+            if path.is_dir():
+                logger.debug(f"Skipping directory: {path}")
+                return True  # Not an error, just skip
             
             # Step 2: Check for duplicates
             if self.config.deduplication.enabled:
@@ -154,7 +168,23 @@ class SmartFileOrganizer:
                     self._stats['duplicates'] += 1
                     return True
             
-            # Step 3: Tier 1 classification (fast)
+            # Step 3: Check custom rules first (NEW - before AI classification)
+            rule_result = self.rules_engine.evaluate(path)
+            if rule_result:
+                dest = self._get_destination(rule_result)
+                actual_dest = self.file_ops.move_file(path, dest)
+                # Record to history
+                self.history.record_move(
+                    source=path,
+                    destination=actual_dest,
+                    category=rule_result.category.value if hasattr(rule_result.category, 'value') else str(rule_result.category),
+                    subcategory=rule_result.subcategory or ""
+                )
+                self._stats['successful'] += 1
+                logger.info(f"Rule matched: {path.name} -> {dest}")
+                return True
+            
+            # Step 4: Tier 1 classification (fast)
             tier1_result = self.tier1_classifier.classify(path)
             
             # Step 4: Check for image duplicates
@@ -177,9 +207,17 @@ class SmartFileOrganizer:
                 self._stats['sensitive'] += 1
                 return True
             
-            # Step 7: Move to organized location
+            # Step 8: Move to organized location
             dest = self._get_destination(final_result)
-            self.file_ops.move_file(path, dest)
+            actual_dest = self.file_ops.move_file(path, dest)
+            
+            # Record to history (NEW)
+            self.history.record_move(
+                source=path,
+                destination=actual_dest,
+                category=final_result.category.value,
+                subcategory=final_result.subcategory or ""
+            )
             
             self._stats['successful'] += 1
             return True
@@ -373,10 +411,162 @@ class SmartFileOrganizer:
                 self.process_file(str(file_path))
         
         return self._stats.copy()
+    
+    # =====================
+    # Undo/History Methods (NEW)
+    # =====================
+    
+    def undo_last(self) -> bool:
+        """Undo the last file organization.
+        
+        Returns:
+            True if undo was successful.
+        """
+        entry = self.history.undo_last()
+        if entry:
+            logger.info(f"Undone: {Path(entry.dest_path).name} -> {entry.source_path}")
+            return True
+        return False
+    
+    def get_history(self, count: int = 10) -> list:
+        """Get recent organization history.
+        
+        Args:
+            count: Number of entries to return.
+        
+        Returns:
+            List of history entries.
+        """
+        return self.history.get_recent(count)
+    
+    def get_rules(self) -> list:
+        """Get all custom rules.
+        
+        Returns:
+            List of custom rules.
+        """
+        return self.rules_engine.get_rules()
+    
+    def add_rule(
+        self,
+        name: str,
+        pattern: str,
+        category: str,
+        subcategory: str = ""
+    ) -> None:
+        """Add a custom organization rule.
+        
+        Args:
+            name: Rule name.
+            pattern: Pattern to match.
+            category: Target category.
+            subcategory: Target subcategory.
+        """
+        from src.actions.rules_engine import MatchType
+        self.rules_engine.add_rule(
+            name=name,
+            pattern=pattern,
+            category=category,
+            subcategory=subcategory,
+            match_type=MatchType.CONTAINS
+        )
+        logger.info(f"Added rule: {name}")
 
 
 def main():
-    """Main entry point."""
+    """Main entry point with CLI support."""
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description="Smart File Organizer - Intelligent file management"
+    )
+    parser.add_argument(
+        '--undo', '-u',
+        action='store_true',
+        help='Undo the last file organization'
+    )
+    parser.add_argument(
+        '--history', '-H',
+        type=int,
+        nargs='?',
+        const=10,
+        help='Show recent history (default: 10 entries)'
+    )
+    parser.add_argument(
+        '--rules', '-r',
+        action='store_true',
+        help='List all custom rules'
+    )
+    parser.add_argument(
+        '--add-rule',
+        nargs=4,
+        metavar=('NAME', 'PATTERN', 'CATEGORY', 'SUBCATEGORY'),
+        help='Add a custom rule'
+    )
+    parser.add_argument(
+        '--stats', '-s',
+        action='store_true',
+        help='Show organization statistics'
+    )
+    
+    args = parser.parse_args()
+    
+    # Handle CLI commands
+    if args.undo:
+        organizer = SmartFileOrganizer()
+        if organizer.undo_last():
+            print("✓ Undo successful")
+        else:
+            print("✗ Nothing to undo")
+        return
+    
+    if args.history is not None:
+        organizer = SmartFileOrganizer()
+        entries = organizer.get_history(args.history)
+        if entries:
+            print(f"\n📋 Recent History ({len(entries)} entries):\n")
+            for entry in entries:
+                status = "✓" if not entry.can_undo else "↩"
+                print(f"  {status} [{entry.timestamp[:16]}] {Path(entry.source_path).name}")
+                print(f"      → {entry.dest_path}")
+        else:
+            print("No history yet.")
+        return
+    
+    if args.rules:
+        organizer = SmartFileOrganizer()
+        rules = organizer.get_rules()
+        if rules:
+            print(f"\n📜 Custom Rules ({len(rules)}):\n")
+            for rule in rules:
+                status = "✓" if rule.enabled else "✗"
+                print(f"  {status} [{rule.priority}] {rule.name}")
+                print(f"      Pattern: '{rule.pattern}' ({rule.match_type.value})")
+                print(f"      → {rule.category}/{rule.subcategory}")
+        else:
+            print("No custom rules defined.")
+        return
+    
+    if args.add_rule:
+        name, pattern, category, subcategory = args.add_rule
+        organizer = SmartFileOrganizer()
+        organizer.add_rule(name, pattern, category, subcategory)
+        print(f"✓ Added rule: {name}")
+        return
+    
+    if args.stats:
+        organizer = SmartFileOrganizer()
+        stats = organizer.history.get_stats()
+        print(f"\n📊 Organization Statistics:\n")
+        print(f"  Total operations: {stats['total_operations']}")
+        print(f"  Undoable: {stats['undoable']}")
+        print(f"  Total size: {stats['total_size_bytes'] / 1024 / 1024:.2f} MB")
+        print(f"\n  By category:")
+        for cat, count in stats.get('by_category', {}).items():
+            print(f"    {cat}: {count}")
+        return
+    
+    # Default: Run the organizer
     organizer = SmartFileOrganizer()
     
     def signal_handler(sig, frame):
@@ -398,3 +588,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

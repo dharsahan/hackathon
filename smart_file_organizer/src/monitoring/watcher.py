@@ -20,6 +20,7 @@ from watchdog.events import (
     FileCreatedEvent,
     FileModifiedEvent,
     DirCreatedEvent,
+    DirModifiedEvent,
 )
 
 from src.utils.logging_config import get_logger
@@ -246,6 +247,12 @@ class OrganizerEventHandler(FileSystemEventHandler):
         Args:
             file_path: Path to the file.
         """
+        # Skip directories - only process files
+        path = Path(file_path)
+        if path.is_dir():
+            logger.debug(f"Skipping directory: {file_path}")
+            return
+        
         # Skip if should be ignored
         if self._should_ignore(file_path):
             logger.debug(f"Ignoring file (matches pattern): {file_path}")
@@ -296,7 +303,8 @@ class OrganizerEventHandler(FileSystemEventHandler):
         Args:
             event: Filesystem event.
         """
-        if isinstance(event, DirCreatedEvent):
+        # Skip directory events
+        if isinstance(event, (DirCreatedEvent, DirModifiedEvent)):
             return
         
         # Only process if not already in the processing set
