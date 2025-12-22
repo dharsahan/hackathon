@@ -37,8 +37,11 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 # Install dependencies
 pip install -r requirements.txt
 
-# Install Tesseract (Ubuntu/Debian)
+# Install Tesseract
+# Ubuntu/Debian:
 sudo apt install tesseract-ocr
+# Arch Linux:
+sudo pacman -S tesseract tesseract-data-eng
 
 # Install Ollama and pull a model
 # Visit https://ollama.ai/download
@@ -178,7 +181,9 @@ pytest tests/ --cov=src --cov-report=html
 
 Contributions are welcome! Please read our contributing guidelines before submitting PRs.
 
+## 📄 License
 
+MIT License - see [LICENSE](LICENSE) for details.
 
 ---
 

@@ -1,0 +1,95 @@
+# Smart File Organizer Configuration
+# ===================================
+
+watcher:
+  # Directories to monitor for new files
+  watch_directories:
+    - ~/Downloads
+    - ~/Desktop
+  
+  # File patterns to ignore (glob format)
+  ignore_patterns:
+    - "*.tmp"
+    - "*.crdownload"
+    - "~$*"
+    - ".DS_Store"
+    - "Thumbs.db"
+    - "*.part"
+  
+  # Debounce time in seconds (wait for file writes to complete)
+  debounce_seconds: 1.0
+  
+  # Watch subdirectories recursively
+  recursive: false
+
+classification:
+  # LLM model to use for semantic classification
+  llm_model: "llama3"
+  
+  # LLM backend: "ollama" or "llama-cpp"
+  llm_backend: "ollama"
+  
+  # Fall back to zero-shot classification if LLM unavailable
+  fallback_to_zero_shot: true
+  
+  # Zero-shot model for fallback classification
+  zero_shot_model: "facebook/bart-large-mnli"
+  
+  # Maximum text length to send to LLM
+  max_text_length: 2000
+  
+  # Enable OCR for image-based documents
+  ocr_enabled: true
+  
+  # OCR languages (Tesseract format)
+  ocr_languages: "eng"
+
+security:
+  # Enable encryption for sensitive files
+  enable_encryption: true
+  
+  # Encryption algorithm
+  encryption_algorithm: "AES-256-GCM"
+  
+  # Key derivation function
+  key_derivation: "argon2id"
+  
+  # Argon2 parameters
+  argon2_memory_cost: 65536  # 64MB
+  argon2_time_cost: 3
+  argon2_parallelism: 4
+  
+  # Number of secure delete passes
+  secure_delete_passes: 3
+
+deduplication:
+  # Enable duplicate detection
+  enabled: true
+  
+  # Use partial hashing for faster comparison
+  use_partial_hash: true
+  
+  # Chunk size for partial hashing (bytes)
+  partial_hash_size: 4096
+  
+  # Threshold for perceptual hash similarity (0-64, lower = more similar)
+  perceptual_hash_threshold: 5
+  
+  # Action for duplicates: "quarantine", "delete", "hardlink", "skip"
+  duplicate_action: "quarantine"
+
+organization:
+  # Base directory for organized files
+  base_directory: ~/Organized
+  
+  # Vault directory for encrypted sensitive files
+  vault_directory: ~/Organized/Vault
+  
+  # Quarantine directory for duplicates
+  quarantine_directory: ~/Organized/.quarantine
+  
+  # Include date in destination path
+  use_date_folders: true
+  
+  # Date folder format (strftime format)
+  date_format: "%Y/%m"
