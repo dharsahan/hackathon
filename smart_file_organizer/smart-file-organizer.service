@@ -1,0 +1,22 @@
+[Unit]
+Description=Smart File Organizer - Intelligent autonomous file management
+Documentation=https://github.com/dharshan/hackathon
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/dharshan/hackathon/smart_file_organizer
+ExecStart=/home/dharshan/hackathon/smart_file_organizer/venv/bin/python -m src.main
+Restart=on-failure
+RestartSec=10
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smart-file-organizer
+
+[Install]
+WantedBy=default.target
