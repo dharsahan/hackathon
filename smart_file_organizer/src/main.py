@@ -9,6 +9,7 @@ Coordinates all modules for intelligent file management.
 import signal
 import sys
 import time
+import threading
 from pathlib import Path
 from queue import Queue
 from typing import Optional
@@ -306,14 +307,37 @@ class SmartFileOrganizer:
         try:
             self.watcher.start()
             self.queue_manager.start()
+            
+            # Start queue bridge thread
+            self._bridge_running = True
+            self._bridge_thread = threading.Thread(
+                target=self._queue_bridge,
+                daemon=True,
+                name="QueueBridge"
+            )
+            self._bridge_thread.start()
+            
             logger.info("Smart File Organizer is running. Press Ctrl+C to stop.")
         except RuntimeError as e:
             logger.error(f"Failed to start: {e}")
             raise
     
+    def _queue_bridge(self) -> None:
+        """Bridge between watcher queue and processor queue."""
+        from queue import Empty
+        while self._bridge_running:
+            try:
+                file_path = self.processing_queue.get(timeout=0.5)
+                self.queue_manager.put(file_path)
+            except Empty:
+                continue
+            except Exception as e:
+                logger.error(f"Queue bridge error: {e}")
+    
     def stop(self) -> None:
         """Stop the Smart File Organizer."""
         logger.info("Stopping Smart File Organizer...")
+        self._bridge_running = False
         self.watcher.stop()
         self.queue_manager.stop()
         logger.info("Smart File Organizer stopped.")
