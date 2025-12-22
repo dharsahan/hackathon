@@ -171,7 +171,7 @@ class SmartFileOrganizer:
             # Step 3: Check custom rules first (NEW - before AI classification)
             rule_result = self.rules_engine.evaluate(path)
             if rule_result:
-                dest = self._get_destination(rule_result)
+                dest = self._get_destination(rule_result, source_path=path)
                 actual_dest = self.file_ops.move_file(path, dest)
                 # Record to history
                 self.history.record_move(
@@ -208,7 +208,7 @@ class SmartFileOrganizer:
                 return True
             
             # Step 8: Move to organized location
-            dest = self._get_destination(final_result)
+            dest = self._get_destination(final_result, source_path=path)
             actual_dest = self.file_ops.move_file(path, dest)
             
             # Record to history (NEW)
@@ -267,20 +267,36 @@ class SmartFileOrganizer:
         
         return tier2_result
     
-    def _get_destination(self, result: ClassificationResult) -> Path:
+    def _get_destination(self, result: ClassificationResult, source_path: Path = None) -> Path:
         """Get destination directory for classified file.
         
         Args:
             result: Classification result.
+            source_path: Optional source file path for in-place organization.
         
         Returns:
             Destination directory path.
         """
-        return self.file_ops.get_destination_path(
-            category=result.category.value,
-            subcategory=result.subcategory,
-            use_date=self.config.organization.use_date_folders
-        )
+        # If organizing in-place, use source directory as base
+        if self.config.organization.organize_in_place and source_path:
+            base_dir = source_path.parent
+        else:
+            base_dir = self.config.organization.base_directory
+        
+        # Build destination path
+        category = result.category.value if hasattr(result.category, 'value') else str(result.category)
+        subcategory = result.subcategory or ""
+        
+        dest = base_dir / category
+        if subcategory:
+            dest = dest / subcategory
+        
+        if self.config.organization.use_date_folders:
+            from datetime import datetime
+            date_folder = datetime.now().strftime(self.config.organization.date_format)
+            dest = dest / date_folder
+        
+        return dest
     
     def _handle_duplicate(self, file_path: Path, result) -> None:
         """Handle duplicate file based on configuration.

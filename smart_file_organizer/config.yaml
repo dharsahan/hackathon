@@ -79,7 +79,12 @@ deduplication:
   duplicate_action: "quarantine"
 
 organization:
-  # Base directory for organized files
+  # Organize files within the source directory (Downloads/Desktop)
+  # If true, files stay in Downloads/Documents/... etc
+  # If false, files move to base_directory
+  organize_in_place: true
+  
+  # Base directory for organized files (used when organize_in_place is false)
   base_directory: ~/Organized
   
   # Vault directory for encrypted sensitive files
@@ -89,7 +94,8 @@ organization:
   quarantine_directory: ~/Organized/.quarantine
   
   # Include date in destination path
-  use_date_folders: true
+  use_date_folders: false
   
   # Date folder format (strftime format)
   date_format: "%Y/%m"
+

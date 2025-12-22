@@ -163,16 +163,18 @@ class OrganizationConfig:
     """File organization settings.
     
     Attributes:
+        organize_in_place: If True, organize within source directory.
         base_directory: Base directory for organized files.
         vault_directory: Directory for encrypted sensitive files.
         quarantine_directory: Directory for duplicate files.
         use_date_folders: Include date in destination path.
         date_format: strftime format for date folders.
     """
+    organize_in_place: bool = True  # NEW: Keep files in Downloads/Desktop
     base_directory: Path = field(default_factory=lambda: Path.home() / "Organized")
     vault_directory: Path = field(default_factory=lambda: Path.home() / "Organized" / "Vault")
     quarantine_directory: Path = field(default_factory=lambda: Path.home() / "Organized" / ".quarantine")
-    use_date_folders: bool = True
+    use_date_folders: bool = False
     date_format: str = "%Y/%m"
 
     @classmethod
@@ -186,10 +188,11 @@ class OrganizationConfig:
         quarantine_dir = Path(data.get("quarantine_directory", "~/Organized/.quarantine")).expanduser()
         
         return cls(
+            organize_in_place=data.get("organize_in_place", True),
             base_directory=base_dir,
             vault_directory=vault_dir,
             quarantine_directory=quarantine_dir,
-            use_date_folders=data.get("use_date_folders", cls.use_date_folders),
+            use_date_folders=data.get("use_date_folders", False),
             date_format=data.get("date_format", cls.date_format)
         )
 
