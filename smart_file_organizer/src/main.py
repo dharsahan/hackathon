@@ -29,6 +29,8 @@ from src.deduplication import DeduplicationEngine, PerceptualHashEngine
 from src.security import AESEncryptor, SecureArchiver, KeyDerivationService
 from src.actions import FileOperations, ConflictResolver, ConflictStrategy, HistoryTracker, RulesEngine
 from src.utils.logging_config import setup_logging, get_logger, LoggingConfig
+from src.utils.notifications import DesktopNotifier, NotificationConfig
+from src.dashboard import DashboardServer
 
 logger = get_logger(__name__)
 
@@ -136,6 +138,12 @@ class SmartFileOrganizer:
             base_directory=self.config.organization.base_directory
         )
         
+        # Desktop notifications (NEW)
+        self.notifier = DesktopNotifier(NotificationConfig())
+        
+        # Web dashboard (NEW)
+        self.dashboard = DashboardServer(self, port=3000)
+        
         logger.info("All components initialized")
     
     def process_file(self, file_path: str) -> bool:
@@ -217,6 +225,13 @@ class SmartFileOrganizer:
                 destination=actual_dest,
                 category=final_result.category.value,
                 subcategory=final_result.subcategory or ""
+            )
+            
+            # Send desktop notification (NEW)
+            self.notifier.notify_organized(
+                filename=path.name,
+                category=final_result.category.value,
+                destination=str(actual_dest)
             )
             
             self._stats['successful'] += 1
@@ -371,7 +386,14 @@ class SmartFileOrganizer:
             )
             self._bridge_thread.start()
             
+            # Start web dashboard (NEW)
+            self.dashboard.start()
+            
+            # Send startup notification (NEW)
+            self.notifier.notify_started()
+            
             logger.info("Smart File Organizer is running. Press Ctrl+C to stop.")
+            logger.info(f"Dashboard: {self.dashboard.url}")
         except RuntimeError as e:
             logger.error(f"Failed to start: {e}")
             raise
@@ -392,8 +414,10 @@ class SmartFileOrganizer:
         """Stop the Smart File Organizer."""
         logger.info("Stopping Smart File Organizer...")
         self._bridge_running = False
+        self.dashboard.stop()
         self.watcher.stop()
         self.queue_manager.stop()
+        self.notifier.notify_stopped(self._stats)
         logger.info("Smart File Organizer stopped.")
         self._print_stats()
     
