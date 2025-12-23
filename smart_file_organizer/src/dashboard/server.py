@@ -549,6 +549,120 @@ DASHBOARD_HTML = '''<!DOCTYPE html>
         
         .restore-btn:hover { background: rgba(34, 197, 94, 0.25); }
         
+        /* Settings Page Styles */
+        .setting-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .setting-row:last-child { border-bottom: none; }
+        
+        .setting-info { flex: 1; }
+        
+        .setting-label {
+            display: block;
+            font-weight: 500;
+            color: #fff;
+            margin-bottom: 4px;
+        }
+        
+        .setting-desc {
+            font-size: 0.8rem;
+            color: #666;
+        }
+        
+        .toggle-switch {
+            width: 50px;
+            height: 26px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 13px;
+            position: relative;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .toggle-switch.enabled { background: rgba(34, 197, 94, 0.4); }
+        
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 3px;
+            left: 3px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+        
+        .toggle-switch.enabled::after { transform: translateX(24px); }
+        
+        .setting-select {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        
+        .setting-select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .danger-btn {
+            padding: 8px 16px;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+        
+        .danger-btn:hover { background: rgba(239, 68, 68, 0.2); }
+        
+        .folder-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            background: rgba(255, 255, 255, 0.02);
+            border-radius: 10px;
+            margin-bottom: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+        
+        .folder-item:hover { border-color: rgba(102, 126, 234, 0.2); }
+        
+        .folder-icon { font-size: 1.3rem; }
+        
+        .folder-path {
+            flex: 1;
+            font-size: 0.9rem;
+            color: #ccc;
+            font-family: monospace;
+        }
+        
+        .remove-folder-btn {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            background: rgba(239, 68, 68, 0.1);
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+        
+        .remove-folder-btn:hover { background: rgba(239, 68, 68, 0.2); }
+        
         /* Scrollbar */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
@@ -719,34 +833,126 @@ DASHBOARD_HTML = '''<!DOCTYPE html>
         <div class="page" id="page-settings">
             <div class="page-header">
                 <h1 class="page-title">Settings</h1>
-                <p class="page-subtitle">Current configuration</p>
+                <p class="page-subtitle">Configure file organization behavior</p>
             </div>
+            
+            <!-- Watch Directories Section -->
             <div class="section">
-                <div class="settings-group">
-                    <h4 class="settings-title">Watch Directories</h4>
-                    <div id="watch-dirs"></div>
+                <div class="section-header">
+                    <h3 class="section-title">📁 Watch Directories</h3>
+                    <button class="add-btn" onclick="showAddFolderModal()" style="padding: 8px 16px; font-size: 0.85rem;">+ Add Folder</button>
                 </div>
-                <div class="settings-group">
-                    <h4 class="settings-title">Organization</h4>
-                    <div class="setting-item">
+                <p style="color: #666; font-size: 0.85rem; margin-bottom: 15px;">Folders being monitored for new files</p>
+                <div id="watch-dirs-list"></div>
+            </div>
+            
+            <!-- Organization Settings -->
+            <div class="section">
+                <div class="section-header">
+                    <h3 class="section-title">🗂️ Organization</h3>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
                         <span class="setting-label">Base Directory</span>
-                        <span class="setting-value" id="base-dir">~/Organized</span>
+                        <span class="setting-desc">Where organized files are stored</span>
                     </div>
-                    <div class="setting-item">
-                        <span class="setting-label">In-place Organization</span>
-                        <span class="setting-value" id="in-place">No</span>
-                    </div>
+                    <span class="setting-value" id="base-dir">~/Organized</span>
                 </div>
-                <div class="settings-group">
-                    <h4 class="settings-title">Classification</h4>
-                    <div class="setting-item">
-                        <span class="setting-label">LLM Model</span>
-                        <span class="setting-value" id="llm-model">gemma3:270m</span>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <span class="setting-label">Organize In-Place</span>
+                        <span class="setting-desc">Keep files in watched directories</span>
                     </div>
+                    <div class="toggle-switch" id="toggle-inplace" onclick="toggleSetting('organize_in_place')"></div>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <span class="setting-label">Use Date Folders</span>
+                        <span class="setting-desc">Organize by year/month subfolders</span>
+                    </div>
+                    <div class="toggle-switch enabled" id="toggle-datefolders" onclick="toggleSetting('use_date_folders')"></div>
+                </div>
+            </div>
+            
+            <!-- Classification Settings -->
+            <div class="section">
+                <div class="section-header">
+                    <h3 class="section-title">🤖 Classification</h3>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <span class="setting-label">LLM Model</span>
+                        <span class="setting-desc">Model used for AI classification</span>
+                    </div>
+                    <span class="setting-value" id="llm-model">gemma3:270m</span>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <span class="setting-label">OCR Enabled</span>
+                        <span class="setting-desc">Extract text from images</span>
+                    </div>
+                    <div class="toggle-switch enabled" id="toggle-ocr" onclick="toggleSetting('ocr_enabled')"></div>
+                </div>
+            </div>
+            
+            <!-- Deduplication Settings -->
+            <div class="section">
+                <div class="section-header">
+                    <h3 class="section-title">🔍 Deduplication</h3>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <span class="setting-label">Enable Deduplication</span>
+                        <span class="setting-desc">Detect and handle duplicate files</span>
+                    </div>
+                    <div class="toggle-switch enabled" id="toggle-dedup" onclick="toggleSetting('dedup_enabled')"></div>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <span class="setting-label">Duplicate Action</span>
+                        <span class="setting-desc">What to do with duplicates</span>
+                    </div>
+                    <select class="setting-select" id="dedup-action" onchange="updateDedupAction()">
+                        <option value="quarantine">Quarantine</option>
+                        <option value="skip">Skip</option>
+                        <option value="delete">Delete</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Actions -->
+            <div class="section" style="background: rgba(239, 68, 68, 0.05); border-color: rgba(239, 68, 68, 0.1);">
+                <div class="section-header">
+                    <h3 class="section-title" style="color: #ef4444;">⚠️ Danger Zone</h3>
+                </div>
+                <div class="setting-row">
+                    <div class="setting-info">
+                        <span class="setting-label">Clear History</span>
+                        <span class="setting-desc">Delete all operation history</span>
+                    </div>
+                    <button class="danger-btn" onclick="clearHistory()">Clear</button>
                 </div>
             </div>
         </div>
     </main>
+    
+    <!-- Add Folder Modal -->
+    <div class="modal" id="add-folder-modal">
+        <div class="modal-content">
+            <h3 class="modal-title">Add Watch Folder</h3>
+            <div class="form-group">
+                <label class="form-label">Folder Path</label>
+                <input type="text" class="form-input" id="folder-path" placeholder="/home/user/Documents">
+            </div>
+            <p style="color: #666; font-size: 0.8rem; margin-bottom: 15px;">
+                💡 Common paths: ~/Downloads, ~/Desktop, ~/Documents
+            </p>
+            <div class="modal-actions">
+                <button class="btn-cancel" onclick="hideFolderModal()">Cancel</button>
+                <button class="btn-save" onclick="addWatchFolder()">Add Folder</button>
+            </div>
+        </div>
+    </div>
     
     <!-- Add Rule Modal -->
     <div class="modal" id="add-rule-modal">
@@ -792,6 +998,7 @@ DASHBOARD_HTML = '''<!DOCTYPE html>
                 if (item.dataset.page === 'rules') loadRules();
                 if (item.dataset.page === 'quarantine') loadQuarantine();
                 if (item.dataset.page === 'history') loadFullHistory();
+                if (item.dataset.page === 'settings') loadSettings();
             });
         });
         
@@ -969,6 +1176,143 @@ DASHBOARD_HTML = '''<!DOCTYPE html>
             fetch('/api/restart', { method: 'POST' });
         }
         
+        // Settings functions
+        async function loadSettings() {
+            try {
+                const res = await fetch('/api/settings');
+                const settings = await res.json();
+                
+                // Update watch directories
+                const dirsEl = document.getElementById('watch-dirs-list');
+                if (settings.watch_directories && settings.watch_directories.length > 0) {
+                    dirsEl.innerHTML = settings.watch_directories.map(dir => `
+                        <div class="folder-item">
+                            <span class="folder-icon">📂</span>
+                            <span class="folder-path">${dir}</span>
+                            <button class="remove-folder-btn" onclick="removeWatchFolder('${dir}')">Remove</button>
+                        </div>
+                    `).join('');
+                } else {
+                    dirsEl.innerHTML = '<div class="empty-state"><div class="empty-icon">📁</div><div>No watch folders</div></div>';
+                }
+                
+                // Update settings values
+                document.getElementById('base-dir').textContent = settings.base_directory || '~/Organized';
+                document.getElementById('llm-model').textContent = settings.llm_model || 'gemma3:270m';
+                
+                // Update toggles
+                if (settings.organize_in_place) {
+                    document.getElementById('toggle-inplace').classList.add('enabled');
+                } else {
+                    document.getElementById('toggle-inplace').classList.remove('enabled');
+                }
+                
+                if (settings.use_date_folders) {
+                    document.getElementById('toggle-datefolders').classList.add('enabled');
+                } else {
+                    document.getElementById('toggle-datefolders').classList.remove('enabled');
+                }
+                
+                if (settings.ocr_enabled) {
+                    document.getElementById('toggle-ocr').classList.add('enabled');
+                } else {
+                    document.getElementById('toggle-ocr').classList.remove('enabled');
+                }
+                
+                if (settings.dedup_enabled) {
+                    document.getElementById('toggle-dedup').classList.add('enabled');
+                } else {
+                    document.getElementById('toggle-dedup').classList.remove('enabled');
+                }
+                
+                // Set duplicate action dropdown
+                if (settings.duplicate_action) {
+                    document.getElementById('dedup-action').value = settings.duplicate_action;
+                }
+            } catch (e) {
+                console.error('Failed to load settings:', e);
+            }
+        }
+        
+        function showAddFolderModal() {
+            document.getElementById('add-folder-modal').classList.add('show');
+        }
+        
+        function hideFolderModal() {
+            document.getElementById('add-folder-modal').classList.remove('show');
+        }
+        
+        async function addWatchFolder() {
+            const path = document.getElementById('folder-path').value.trim();
+            if (!path) return;
+            
+            // Expand ~ to home directory
+            const expandedPath = path.replace(/^~/, '/home/' + (await getHomeDir()));
+            
+            await fetch('/api/settings/folders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: path })
+            });
+            
+            hideFolderModal();
+            document.getElementById('folder-path').value = '';
+            loadSettings();
+        }
+        
+        async function getHomeDir() {
+            try {
+                const res = await fetch('/api/settings');
+                const settings = await res.json();
+                if (settings.watch_directories && settings.watch_directories.length > 0) {
+                    const match = settings.watch_directories[0].match(/^\/home\/([^/]+)/);
+                    return match ? match[1] : 'user';
+                }
+            } catch (e) {}
+            return 'user';
+        }
+        
+        async function removeWatchFolder(path) {
+            if (!confirm('Remove this folder from monitoring?')) return;
+            
+            await fetch('/api/settings/folders', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ path: path })
+            });
+            
+            loadSettings();
+        }
+        
+        async function toggleSetting(setting) {
+            const el = document.getElementById('toggle-' + setting.replace(/_/g, '').replace('organize', 'inplace').replace('use', '').replace('ocr', 'ocr').replace('dedup', 'dedup'));
+            const currentlyEnabled = el && el.classList.contains('enabled');
+            
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ [setting]: !currentlyEnabled })
+            });
+            
+            loadSettings();
+        }
+        
+        async function updateDedupAction() {
+            const action = document.getElementById('dedup-action').value;
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ duplicate_action: action })
+            });
+        }
+        
+        async function clearHistory() {
+            if (!confirm('Are you sure you want to clear all history? This cannot be undone.')) return;
+            
+            await fetch('/api/history/clear', { method: 'POST' });
+            fetchData();
+        }
+        
         // Initial load
         fetchData();
         setInterval(fetchData, 5000);
@@ -1006,6 +1350,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._serve_rules()
         elif path == "/api/quarantine":
             self._serve_quarantine()
+        elif path == "/api/settings":
+            self._serve_settings()
         else:
             self._send_404()
 
@@ -1034,6 +1380,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._restore_file(data.get('path', ''))
         elif path == "/api/restart":
             self._restart_service()
+        elif path == "/api/settings":
+            self._update_settings(data)
+        elif path == "/api/settings/folders":
+            self._add_watch_folder(data.get('path', ''))
+        elif path == "/api/history/clear":
+            self._clear_history()
         else:
             self._send_404()
 
@@ -1042,9 +1394,18 @@ class DashboardHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
 
+        content_length = int(self.headers.get('Content-Length', 0))
+        body = self.rfile.read(content_length).decode() if content_length > 0 else '{}'
+        try:
+            data = json.loads(body) if body else {}
+        except:
+            data = {}
+        
         if path.startswith("/api/rules/"):
             rule_id = int(path.split("/")[-1])
             self._delete_rule(rule_id)
+        elif path == "/api/settings/folders":
+            self._remove_watch_folder(data.get('path', ''))
         else:
             self._send_404()
 
@@ -1189,6 +1550,130 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self._send_json({"success": False}, 400)
         else:
             self._send_json({"error": "Organizer not available"}, 500)
+    
+    def _serve_settings(self):
+        """Serve current settings."""
+        try:
+            config_path = Path(__file__).parent.parent.parent / "config.yaml"
+            import yaml
+            
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f) or {}
+            
+            watcher = config.get('watcher', {})
+            org = config.get('organization', {})
+            classification = config.get('classification', {})
+            dedup = config.get('deduplication', {})
+            
+            settings = {
+                'watch_directories': watcher.get('directories', []),
+                'base_directory': org.get('base_directory', str(Path.home() / 'Organized')),
+                'organize_in_place': org.get('organize_in_place', False),
+                'use_date_folders': org.get('use_date_folders', True),
+                'llm_model': classification.get('llm_model', 'gemma3:270m'),
+                'ocr_enabled': classification.get('ocr_enabled', True),
+                'dedup_enabled': dedup.get('enabled', True),
+                'duplicate_action': dedup.get('duplicate_action', 'quarantine'),
+            }
+            
+            self._send_json(settings)
+        except Exception as e:
+            self._send_json({"error": str(e)}, 500)
+    
+    def _update_settings(self, data: dict):
+        """Update settings in config.yaml."""
+        try:
+            config_path = Path(__file__).parent.parent.parent / "config.yaml"
+            import yaml
+            
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f) or {}
+            
+            # Apply updates
+            if 'organize_in_place' in data:
+                config.setdefault('organization', {})['organize_in_place'] = data['organize_in_place']
+            if 'use_date_folders' in data:
+                config.setdefault('organization', {})['use_date_folders'] = data['use_date_folders']
+            if 'ocr_enabled' in data:
+                config.setdefault('classification', {})['ocr_enabled'] = data['ocr_enabled']
+            if 'dedup_enabled' in data:
+                config.setdefault('deduplication', {})['enabled'] = data['dedup_enabled']
+            if 'duplicate_action' in data:
+                config.setdefault('deduplication', {})['duplicate_action'] = data['duplicate_action']
+            
+            with open(config_path, 'w') as f:
+                yaml.dump(config, f, default_flow_style=False)
+            
+            self._send_json({"success": True})
+        except Exception as e:
+            self._send_json({"error": str(e)}, 500)
+    
+    def _add_watch_folder(self, path: str):
+        """Add a new watch folder."""
+        try:
+            if not path:
+                self._send_json({"error": "Path is required"}, 400)
+                return
+            
+            # Expand ~ to home directory
+            if path.startswith('~'):
+                path = str(Path.home() / path[2:])
+            
+            # Validate path exists
+            folder = Path(path)
+            if not folder.exists():
+                folder.mkdir(parents=True, exist_ok=True)
+            
+            config_path = Path(__file__).parent.parent.parent / "config.yaml"
+            import yaml
+            
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f) or {}
+            
+            dirs = config.setdefault('watcher', {}).setdefault('directories', [])
+            if path not in dirs:
+                dirs.append(path)
+            
+            with open(config_path, 'w') as f:
+                yaml.dump(config, f, default_flow_style=False)
+            
+            self._send_json({"success": True, "path": path})
+        except Exception as e:
+            self._send_json({"error": str(e)}, 500)
+    
+    def _remove_watch_folder(self, path: str):
+        """Remove a watch folder."""
+        try:
+            if not path:
+                self._send_json({"error": "Path is required"}, 400)
+                return
+            
+            config_path = Path(__file__).parent.parent.parent / "config.yaml"
+            import yaml
+            
+            with open(config_path, 'r') as f:
+                config = yaml.safe_load(f) or {}
+            
+            dirs = config.get('watcher', {}).get('directories', [])
+            if path in dirs:
+                dirs.remove(path)
+                config['watcher']['directories'] = dirs
+            
+            with open(config_path, 'w') as f:
+                yaml.dump(config, f, default_flow_style=False)
+            
+            self._send_json({"success": True})
+        except Exception as e:
+            self._send_json({"error": str(e)}, 500)
+    
+    def _clear_history(self):
+        """Clear all history."""
+        try:
+            if self.organizer and hasattr(self.organizer, 'history'):
+                self.organizer.history.clear_history()
+            self._send_json({"success": True})
+        except Exception as e:
+            self._send_json({"error": str(e)}, 500)
 
 
 class DashboardServer:
