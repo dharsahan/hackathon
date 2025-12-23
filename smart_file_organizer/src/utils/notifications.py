@@ -126,12 +126,18 @@ class DesktopNotifier:
                 message
             ]
             
-            subprocess.run(cmd, capture_output=True, timeout=5)
+            # Run non-blocking (fire and forget)
+            subprocess.Popen(
+                cmd,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                start_new_session=True
+            )
             logger.debug(f"Notification sent: {title}")
             return True
             
         except Exception as e:
-            logger.error(f"Failed to send notification: {e}")
+            logger.debug(f"Notification skipped: {e}")
             return False
     
     def notify_organized(self, filename: str, category: str, destination: str) -> None:
