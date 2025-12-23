@@ -1566,7 +1566,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             dedup = config.get('deduplication', {})
             
             settings = {
-                'watch_directories': watcher.get('directories', []),
+                'watch_directories': watcher.get('watch_directories', []),
                 'base_directory': org.get('base_directory', str(Path.home() / 'Organized')),
                 'organize_in_place': org.get('organize_in_place', False),
                 'use_date_folders': org.get('use_date_folders', True),
@@ -1630,7 +1630,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             with open(config_path, 'r') as f:
                 config = yaml.safe_load(f) or {}
             
-            dirs = config.setdefault('watcher', {}).setdefault('directories', [])
+            dirs = config.setdefault('watcher', {}).setdefault('watch_directories', [])
             if path not in dirs:
                 dirs.append(path)
             
@@ -1654,10 +1654,10 @@ class DashboardHandler(BaseHTTPRequestHandler):
             with open(config_path, 'r') as f:
                 config = yaml.safe_load(f) or {}
             
-            dirs = config.get('watcher', {}).get('directories', [])
+            dirs = config.get('watcher', {}).get('watch_directories', [])
             if path in dirs:
                 dirs.remove(path)
-                config['watcher']['directories'] = dirs
+                config['watcher']['watch_directories'] = dirs
             
             with open(config_path, 'w') as f:
                 yaml.dump(config, f, default_flow_style=False)
@@ -1716,6 +1716,7 @@ class DashboardServer:
 
     def _serve(self) -> None:
         """Server loop."""
+        self._server.timeout = 0.5  # Non-blocking with 500ms timeout
         while self._running:
             self._server.handle_request()
 
@@ -1725,9 +1726,9 @@ class DashboardServer:
             return
 
         self._running = False
-        if self._server:
-            self._server.shutdown()
-
+        # Don't call shutdown() - it can deadlock
+        # The timeout in _serve() will handle the exit
+        
         logger.info("Dashboard stopped")
 
     @property

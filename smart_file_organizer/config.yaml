@@ -29,8 +29,6 @@ security:
   secure_delete_passes: 3
 watcher:
   debounce_seconds: 1.0
-  directories:
-  - /home/dharshan/Documents
   ignore_patterns:
   - '*.tmp'
   - '*.crdownload'
