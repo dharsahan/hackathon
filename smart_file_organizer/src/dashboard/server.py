@@ -9,11 +9,9 @@ Shows live stats, activity feed, and allows undo operations.
 import json
 import threading
 from pathlib import Path
-from datetime import datetime
-from typing import Optional, List, Dict, Any
+from typing import Optional, Any
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
-import mimetypes
 
 from src.utils.logging_config import get_logger
 
@@ -984,19 +982,19 @@ DASHBOARD_HTML = '''<!DOCTYPE html>
 
 class DashboardHandler(BaseHTTPRequestHandler):
     """HTTP request handler for the dashboard."""
-    
+
     organizer = None  # Set by DashboardServer
-    
+
     def log_message(self, format, *args):
         """Suppress default logging."""
         pass
-    
+
     def do_GET(self):
         """Handle GET requests."""
         parsed = urlparse(self.path)
         path = parsed.path
         query = parse_qs(parsed.query)
-        
+
         if path == "/" or path == "/dashboard":
             self._serve_dashboard()
         elif path == "/api/stats":
@@ -1010,12 +1008,12 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._serve_quarantine()
         else:
             self._send_404()
-    
+
     def do_POST(self):
         """Handle POST requests."""
         parsed = urlparse(self.path)
         path = parsed.path
-        
+
         # Read body if present
         content_length = int(self.headers.get('Content-Length', 0))
         body = self.rfile.read(content_length).decode() if content_length > 0 else '{}'
@@ -1023,7 +1021,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             data = json.loads(body) if body else {}
         except:
             data = {}
-        
+
         if path.startswith("/api/undo/"):
             entry_id = path.split("/")[-1]
             self._handle_undo(int(entry_id))
@@ -1038,18 +1036,18 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._restart_service()
         else:
             self._send_404()
-    
+
     def do_DELETE(self):
         """Handle DELETE requests."""
         parsed = urlparse(self.path)
         path = parsed.path
-        
+
         if path.startswith("/api/rules/"):
             rule_id = int(path.split("/")[-1])
             self._delete_rule(rule_id)
         else:
             self._send_404()
-    
+
     def _send_json(self, data: Any, status: int = 200):
         """Send JSON response."""
         self.send_response(status)
@@ -1057,23 +1055,23 @@ class DashboardHandler(BaseHTTPRequestHandler):
         self.send_header("Access-Control-Allow-Origin", "*")
         self.end_headers()
         self.wfile.write(json.dumps(data).encode())
-    
+
     def _send_html(self, html: str, status: int = 200):
         """Send HTML response."""
         self.send_response(status)
         self.send_header("Content-Type", "text/html")
         self.end_headers()
         self.wfile.write(html.encode())
-    
+
     def _send_404(self):
         """Send 404 response."""
         self.send_response(404)
         self.end_headers()
-    
+
     def _serve_dashboard(self):
         """Serve the main dashboard HTML."""
         self._send_html(DASHBOARD_HTML)
-    
+
     def _serve_stats(self):
         """Serve statistics API."""
         if self.organizer and hasattr(self.organizer, 'history'):
@@ -1081,7 +1079,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._send_json(stats)
         else:
             self._send_json({})
-    
+
     def _serve_history(self, limit: int = 20):
         """Serve history API."""
         if self.organizer and hasattr(self.organizer, 'history'):
@@ -1090,7 +1088,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._send_json(data)
         else:
             self._send_json([])
-    
+
     def _serve_rules(self):
         """Serve rules API."""
         if self.organizer and hasattr(self.organizer, 'rules_engine'):
@@ -1099,14 +1097,14 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._send_json(data)
         else:
             self._send_json([])
-    
+
     def _serve_quarantine(self):
         """Serve quarantine files API."""
         try:
             if self.organizer and hasattr(self.organizer, 'config'):
                 quarantine_dir = Path(self.organizer.config.organization.base_directory) / ".quarantine"
                 files = []
-                
+
                 if quarantine_dir.exists():
                     # Scan duplicate and sensitive subdirs
                     for subdir in ['duplicate', 'sensitive']:
@@ -1120,13 +1118,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
                                         'size': f.stat().st_size,
                                         'reason': 'Duplicate' if subdir == 'duplicate' else 'Sensitive'
                                     })
-                
+
                 self._send_json(files)
             else:
                 self._send_json([])
-        except Exception as e:
+        except Exception:
             self._send_json([])
-    
+
     def _add_rule(self, data: dict):
         """Add a new rule."""
         if self.organizer and hasattr(self.organizer, 'rules_engine'):
@@ -1140,7 +1138,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._send_json({"success": True})
         else:
             self._send_json({"error": "Rules engine not available"}, 500)
-    
+
     def _toggle_rule(self, rule_id: int, enabled: bool):
         """Toggle a rule."""
         if self.organizer and hasattr(self.organizer, 'rules_engine'):
@@ -1148,7 +1146,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._send_json({"success": True})
         else:
             self._send_json({"error": "Rules engine not available"}, 500)
-    
+
     def _delete_rule(self, rule_id: int):
         """Delete a rule."""
         if self.organizer and hasattr(self.organizer, 'rules_engine'):
@@ -1156,7 +1154,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._send_json({"success": True})
         else:
             self._send_json({"error": "Rules engine not available"}, 500)
-    
+
     def _restore_file(self, path: str):
         """Restore a file from quarantine."""
         try:
@@ -1170,7 +1168,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self._send_json({"error": "File not found"}, 404)
         except Exception as e:
             self._send_json({"error": str(e)}, 500)
-    
+
     def _restart_service(self):
         """Restart the systemd service."""
         import subprocess
@@ -1180,7 +1178,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._send_json({"success": True})
         except:
             self._send_json({"error": "Failed to restart"}, 500)
-    
+
     def _handle_undo(self, entry_id: int):
         """Handle undo request."""
         if self.organizer and hasattr(self.organizer, 'history'):
@@ -1195,7 +1193,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
 class DashboardServer:
     """Web dashboard server for the file organizer."""
-    
+
     def __init__(self, organizer, host: str = "127.0.0.1", port: int = 8080):
         """Initialize the dashboard server.
         
@@ -1210,43 +1208,43 @@ class DashboardServer:
         self._server: Optional[HTTPServer] = None
         self._thread: Optional[threading.Thread] = None
         self._running = False
-    
+
     def start(self) -> None:
         """Start the dashboard server."""
         if self._running:
             return
-        
+
         # Set organizer reference in handler
         DashboardHandler.organizer = self.organizer
-        
+
         self._server = HTTPServer((self.host, self.port), DashboardHandler)
         self._running = True
-        
+
         self._thread = threading.Thread(
             target=self._serve,
             daemon=True,
             name="DashboardServer"
         )
         self._thread.start()
-        
+
         logger.info(f"Dashboard started at http://{self.host}:{self.port}")
-    
+
     def _serve(self) -> None:
         """Server loop."""
         while self._running:
             self._server.handle_request()
-    
+
     def stop(self) -> None:
         """Stop the dashboard server."""
         if not self._running:
             return
-        
+
         self._running = False
         if self._server:
             self._server.shutdown()
-        
+
         logger.info("Dashboard stopped")
-    
+
     @property
     def url(self) -> str:
         """Get the dashboard URL."""

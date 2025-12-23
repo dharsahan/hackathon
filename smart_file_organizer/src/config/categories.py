@@ -76,37 +76,37 @@ class CategoryMapping:
     
     Provides comprehensive mapping for quick Tier 1 classification.
     """
-    
+
     # Document extensions
     DOCUMENT_EXTENSIONS: Dict[str, str] = None
-    
+
     # Image extensions
     IMAGE_EXTENSIONS: Dict[str, str] = None
-    
+
     # Audio extensions
     AUDIO_EXTENSIONS: Dict[str, str] = None
-    
+
     # Video extensions
     VIDEO_EXTENSIONS: Dict[str, str] = None
-    
+
     # Archive extensions
     ARCHIVE_EXTENSIONS: Set[str] = None
-    
+
     # Installer extensions
     INSTALLER_EXTENSIONS: Set[str] = None
-    
+
     # Code extensions
     CODE_EXTENSIONS: Dict[str, str] = None
-    
+
     # Data extensions
     DATA_EXTENSIONS: Dict[str, str] = None
-    
+
     # Ebook extensions
     EBOOK_EXTENSIONS: Set[str] = None
-    
+
     # Font extensions
     FONT_EXTENSIONS: Set[str] = None
-    
+
     def __post_init__(self):
         """Initialize all extension mappings."""
         self.DOCUMENT_EXTENSIONS = {
@@ -129,7 +129,7 @@ class CategoryMapping:
             ".numbers": "Excel",
             ".keynote": "PowerPoint",
         }
-        
+
         self.IMAGE_EXTENSIONS = {
             ".jpg": "Photo",
             ".jpeg": "Photo",
@@ -152,7 +152,7 @@ class CategoryMapping:
             ".ai": "Artwork",
             ".xcf": "Artwork",
         }
-        
+
         self.AUDIO_EXTENSIONS = {
             ".mp3": "Music",
             ".m4a": "Music",
@@ -165,7 +165,7 @@ class CategoryMapping:
             ".opus": "Podcast",
             ".m4b": "Audiobook",
         }
-        
+
         self.VIDEO_EXTENSIONS = {
             ".mp4": "Video",
             ".mov": "Video",
@@ -179,17 +179,17 @@ class CategoryMapping:
             ".mpg": "Video",
             ".3gp": "Video",
         }
-        
+
         self.ARCHIVE_EXTENSIONS = {
             ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2",
             ".xz", ".tgz", ".tbz2", ".lz", ".lzma",
         }
-        
+
         self.INSTALLER_EXTENSIONS = {
             ".exe", ".msi", ".dmg", ".pkg", ".deb",
             ".rpm", ".appimage", ".snap", ".flatpak",
         }
-        
+
         self.CODE_EXTENSIONS = {
             ".py": "Python",
             ".js": "JavaScript",
@@ -223,7 +223,7 @@ class CategoryMapping:
             ".vue": "Web",
             ".svelte": "Web",
         }
-        
+
         self.DATA_EXTENSIONS = {
             ".json": "JSON",
             ".xml": "XML",
@@ -243,15 +243,15 @@ class CategoryMapping:
             ".pickle": "Data",
             ".pkl": "Data",
         }
-        
+
         self.EBOOK_EXTENSIONS = {
             ".epub", ".mobi", ".azw", ".azw3", ".fb2", ".djvu",
         }
-        
+
         self.FONT_EXTENSIONS = {
             ".ttf", ".otf", ".woff", ".woff2", ".eot",
         }
-    
+
     def get_category(self, extension: str) -> Tuple[FileCategory, Optional[str]]:
         """Get category and subcategory for a file extension.
         
@@ -262,47 +262,47 @@ class CategoryMapping:
             Tuple of (FileCategory, subcategory_string or None).
         """
         ext_lower = extension.lower()
-        
+
         if ext_lower in self.DOCUMENT_EXTENSIONS:
             return FileCategory.DOCUMENTS, self.DOCUMENT_EXTENSIONS[ext_lower]
-        
+
         if ext_lower in self.IMAGE_EXTENSIONS:
             return FileCategory.IMAGES, self.IMAGE_EXTENSIONS[ext_lower]
-        
+
         if ext_lower in self.AUDIO_EXTENSIONS:
             return FileCategory.AUDIO, self.AUDIO_EXTENSIONS[ext_lower]
-        
+
         if ext_lower in self.VIDEO_EXTENSIONS:
             return FileCategory.VIDEO, self.VIDEO_EXTENSIONS[ext_lower]
-        
+
         if ext_lower in self.ARCHIVE_EXTENSIONS:
             return FileCategory.ARCHIVES, None
-        
+
         if ext_lower in self.INSTALLER_EXTENSIONS:
             return FileCategory.INSTALLERS, None
-        
+
         if ext_lower in self.CODE_EXTENSIONS:
             return FileCategory.CODE, self.CODE_EXTENSIONS[ext_lower]
-        
+
         if ext_lower in self.DATA_EXTENSIONS:
             return FileCategory.DATA, self.DATA_EXTENSIONS[ext_lower]
-        
+
         if ext_lower in self.EBOOK_EXTENSIONS:
             return FileCategory.EBOOKS, None
-        
+
         if ext_lower in self.FONT_EXTENSIONS:
             return FileCategory.FONTS, None
-        
+
         return FileCategory.UNKNOWN, None
-    
+
     def is_document(self, extension: str) -> bool:
         """Check if extension is a document type."""
         return extension.lower() in self.DOCUMENT_EXTENSIONS
-    
+
     def is_image(self, extension: str) -> bool:
         """Check if extension is an image type."""
         return extension.lower() in self.IMAGE_EXTENSIONS
-    
+
     def needs_ocr(self, extension: str) -> bool:
         """Check if file type might need OCR for text extraction."""
         ext_lower = extension.lower()

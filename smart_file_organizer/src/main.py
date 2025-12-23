@@ -54,7 +54,7 @@ class SmartFileOrganizer:
     Coordinates filesystem monitoring, classification, deduplication,
     encryption, and file organization.
     """
-    
+
     def __init__(self, config_path: Optional[Path] = None):
         """Initialize the Smart File Organizer.
         
@@ -63,16 +63,16 @@ class SmartFileOrganizer:
         """
         # Load configuration
         self.config = Config.load(config_path)
-        
+
         # Setup logging
         setup_logging(LoggingConfig(level="INFO"))
-        
+
         # Initialize processing queue
         self.processing_queue = Queue()
-        
+
         # Initialize components
         self._init_components()
-        
+
         # Statistics
         self._stats = {
             'processed': 0,
@@ -81,7 +81,7 @@ class SmartFileOrganizer:
             'duplicates': 0,
             'sensitive': 0,
         }
-    
+
     def _init_components(self) -> None:
         """Initialize all processing components."""
         # Monitoring
@@ -89,17 +89,17 @@ class SmartFileOrganizer:
             self.config.watcher,
             self.processing_queue
         )
-        
+
         self.queue_manager = ProcessingQueueManager(
             processor_callback=self.process_file,
             max_workers=4,
             completion_callback=self._on_file_complete
         )
-        
+
         # Extraction
         self.text_extractor = TextExtractionService()
         self.ocr_engine = OCREngine() if self.config.classification.ocr_enabled else None
-        
+
         # Classification
         self.tier1_classifier = Tier1Classifier()
         self.tier2_classifier = Tier2ContentClassifier()
@@ -107,18 +107,18 @@ class SmartFileOrganizer:
             model=self.config.classification.llm_model
         )
         self.zero_shot_classifier = ZeroShotClassifier() if self.config.classification.fallback_to_zero_shot else None
-        
+
         # Deduplication
         self.dedup_engine = DeduplicationEngine()
         self.perceptual_hasher = PerceptualHashEngine(
             threshold=self.config.deduplication.perceptual_hash_threshold
         )
-        
+
         # Security
         self.encryptor = AESEncryptor()
         self.archiver = SecureArchiver()
         self.key_service = KeyDerivationService()
-        
+
         # File operations
         self.file_ops = FileOperations(
             base_directory=self.config.organization.base_directory
@@ -127,25 +127,25 @@ class SmartFileOrganizer:
             strategy=ConflictStrategy.RENAME,
             quarantine_dir=self.config.organization.quarantine_directory
         )
-        
+
         # History tracking (NEW)
         self.history = HistoryTracker(
             base_directory=self.config.organization.base_directory
         )
-        
+
         # Custom rules engine (NEW)
         self.rules_engine = RulesEngine(
             base_directory=self.config.organization.base_directory
         )
-        
+
         # Desktop notifications (NEW)
         self.notifier = DesktopNotifier(NotificationConfig())
-        
+
         # Web dashboard (NEW)
         self.dashboard = DashboardServer(self, port=3000)
-        
+
         logger.info("All components initialized")
-    
+
     def process_file(self, file_path: str) -> bool:
         """Process a single file through the pipeline.
         
@@ -157,17 +157,17 @@ class SmartFileOrganizer:
         """
         path = Path(file_path)
         logger.info(f"Processing: {path.name}")
-        
+
         try:
             # Step 1: Check if file still exists and is actually a file
             if not path.exists():
                 logger.warning(f"File no longer exists: {path}")
                 return True  # Not an error
-            
+
             if path.is_dir():
                 logger.debug(f"Skipping directory: {path}")
                 return True  # Not an error, just skip
-            
+
             # Step 2: Check for duplicates
             if self.config.deduplication.enabled:
                 hash_result = self.dedup_engine.check_duplicate(path)
@@ -175,7 +175,7 @@ class SmartFileOrganizer:
                     self._handle_duplicate(path, hash_result)
                     self._stats['duplicates'] += 1
                     return True
-            
+
             # Step 3: Check custom rules first (NEW - before AI classification)
             rule_result = self.rules_engine.evaluate(path)
             if rule_result:
@@ -191,10 +191,10 @@ class SmartFileOrganizer:
                 self._stats['successful'] += 1
                 logger.info(f"Rule matched: {path.name} -> {dest}")
                 return True
-            
+
             # Step 4: Tier 1 classification (fast)
             tier1_result = self.tier1_classifier.classify(path)
-            
+
             # Step 4: Check for image duplicates
             if tier1_result.category.value == "Images" and self.config.deduplication.enabled:
                 if self.perceptual_hasher.is_supported(path):
@@ -203,22 +203,22 @@ class SmartFileOrganizer:
                         self._handle_duplicate(path, perceptual_result)
                         self._stats['duplicates'] += 1
                         return True
-            
+
             # Step 5: Deeper analysis for documents
             final_result = tier1_result
             if tier1_result.needs_deeper_analysis:
                 final_result = self._deep_classify(path, tier1_result)
-            
+
             # Step 6: Handle sensitive files
             if final_result.is_sensitive and self.config.security.enable_encryption:
                 self._encrypt_and_vault(path, final_result)
                 self._stats['sensitive'] += 1
                 return True
-            
+
             # Step 8: Move to organized location
             dest = self._get_destination(final_result, source_path=path)
             actual_dest = self.file_ops.move_file(path, dest)
-            
+
             # Record to history (NEW)
             self.history.record_move(
                 source=path,
@@ -226,24 +226,24 @@ class SmartFileOrganizer:
                 category=final_result.category.value,
                 subcategory=final_result.subcategory or ""
             )
-            
+
             # Send desktop notification (NEW)
             self.notifier.notify_organized(
                 filename=path.name,
                 category=final_result.category.value,
                 destination=str(actual_dest)
             )
-            
+
             self._stats['successful'] += 1
             return True
-            
+
         except Exception as e:
             logger.error(f"Error processing {path.name}: {e}")
             self._stats['failed'] += 1
             return False
         finally:
             self._stats['processed'] += 1
-    
+
     def _deep_classify(
         self,
         file_path: Path,
@@ -260,28 +260,28 @@ class SmartFileOrganizer:
         """
         # Extract text
         extraction_result = self.text_extractor.extract(file_path)
-        
+
         if not extraction_result or not extraction_result.text:
             return tier1_result
-        
+
         text = extraction_result.text
-        
+
         # Tier 2: Pattern matching
         tier2_result = self.tier2_classifier.classify(text, tier1_result)
-        
+
         if not tier2_result.needs_deeper_analysis:
             return tier2_result
-        
+
         # Tier 3: LLM classification (if available)
         if self.tier3_classifier.is_available():
             return self.tier3_classifier.classify_with_result(text, tier2_result)
-        
+
         # Fallback to zero-shot
         if self.zero_shot_classifier and self.zero_shot_classifier.is_available():
             return self.zero_shot_classifier.classify_with_result(text, tier2_result)
-        
+
         return tier2_result
-    
+
     def _get_destination(self, result: ClassificationResult, source_path: Path = None) -> Path:
         """Get destination directory for classified file.
         
@@ -297,22 +297,22 @@ class SmartFileOrganizer:
             base_dir = source_path.parent
         else:
             base_dir = self.config.organization.base_directory
-        
+
         # Build destination path
         category = result.category.value if hasattr(result.category, 'value') else str(result.category)
         subcategory = result.subcategory or ""
-        
+
         dest = base_dir / category
         if subcategory:
             dest = dest / subcategory
-        
+
         if self.config.organization.use_date_folders:
             from datetime import datetime
             date_folder = datetime.now().strftime(self.config.organization.date_format)
             dest = dest / date_folder
-        
+
         return dest
-    
+
     def _handle_duplicate(self, file_path: Path, result) -> None:
         """Handle duplicate file based on configuration.
         
@@ -321,7 +321,7 @@ class SmartFileOrganizer:
             result: Deduplication result.
         """
         action = self.config.deduplication.duplicate_action
-        
+
         if action == "quarantine":
             self.file_ops.quarantine_file(file_path, reason="duplicate")
         elif action == "delete":
@@ -330,9 +330,9 @@ class SmartFileOrganizer:
             deleter.secure_delete(file_path)
         elif action == "skip":
             logger.info(f"Skipping duplicate: {file_path.name}")
-        
+
         logger.info(f"Duplicate handled ({action}): {file_path.name}")
-    
+
     def _encrypt_and_vault(
         self,
         file_path: Path,
@@ -346,18 +346,18 @@ class SmartFileOrganizer:
         """
         vault_dir = self.config.organization.vault_directory
         vault_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Note: In production, password should come from secure storage
         # This is a placeholder - implement proper key management
         logger.info(f"Sensitive file detected: {file_path.name}")
         logger.info("Moving to vault (encryption requires password setup)")
-        
+
         # For now, just move to vault without encryption
         # TODO: Implement password prompt/storage
         vault_dest = vault_dir / result.category.value
         vault_dest.mkdir(parents=True, exist_ok=True)
         self.file_ops.move_file(file_path, vault_dest)
-    
+
     def _on_file_complete(self, file_path: str) -> None:
         """Callback when file processing completes.
         
@@ -366,17 +366,17 @@ class SmartFileOrganizer:
         """
         # Notify watcher that file is done
         self.watcher.handler.mark_complete(file_path)
-    
+
     def start(self) -> None:
         """Start the Smart File Organizer."""
         logger.info("Starting Smart File Organizer...")
         logger.info(f"Watching: {[str(d) for d in self.config.watcher.watch_directories]}")
         logger.info(f"Organizing to: {self.config.organization.base_directory}")
-        
+
         try:
             self.watcher.start()
             self.queue_manager.start()
-            
+
             # Start queue bridge thread
             self._bridge_running = True
             self._bridge_thread = threading.Thread(
@@ -385,19 +385,19 @@ class SmartFileOrganizer:
                 name="QueueBridge"
             )
             self._bridge_thread.start()
-            
+
             # Start web dashboard (NEW)
             self.dashboard.start()
-            
+
             # Send startup notification (NEW)
             self.notifier.notify_started()
-            
+
             logger.info("Smart File Organizer is running. Press Ctrl+C to stop.")
             logger.info(f"Dashboard: {self.dashboard.url}")
         except RuntimeError as e:
             logger.error(f"Failed to start: {e}")
             raise
-    
+
     def _queue_bridge(self) -> None:
         """Bridge between watcher queue and processor queue."""
         from queue import Empty
@@ -409,7 +409,7 @@ class SmartFileOrganizer:
                 continue
             except Exception as e:
                 logger.error(f"Queue bridge error: {e}")
-    
+
     def stop(self) -> None:
         """Stop the Smart File Organizer."""
         logger.info("Stopping Smart File Organizer...")
@@ -420,16 +420,16 @@ class SmartFileOrganizer:
         self.notifier.notify_stopped(self._stats)
         logger.info("Smart File Organizer stopped.")
         self._print_stats()
-    
+
     def _print_stats(self) -> None:
         """Print processing statistics."""
-        logger.info(f"Statistics:")
+        logger.info("Statistics:")
         logger.info(f"  Processed: {self._stats['processed']}")
         logger.info(f"  Successful: {self._stats['successful']}")
         logger.info(f"  Failed: {self._stats['failed']}")
         logger.info(f"  Duplicates: {self._stats['duplicates']}")
         logger.info(f"  Sensitive: {self._stats['sensitive']}")
-    
+
     def process_directory(self, directory: Path) -> dict:
         """Process all files in a directory (batch mode).
         
@@ -440,22 +440,22 @@ class SmartFileOrganizer:
             Processing statistics.
         """
         directory = Path(directory)
-        
+
         if not directory.is_dir():
             raise ValueError(f"Not a directory: {directory}")
-        
+
         logger.info(f"Processing directory: {directory}")
-        
+
         for file_path in directory.iterdir():
             if file_path.is_file():
                 self.process_file(str(file_path))
-        
+
         return self._stats.copy()
-    
+
     # =====================
     # Undo/History Methods (NEW)
     # =====================
-    
+
     def undo_last(self) -> bool:
         """Undo the last file organization.
         
@@ -467,7 +467,7 @@ class SmartFileOrganizer:
             logger.info(f"Undone: {Path(entry.dest_path).name} -> {entry.source_path}")
             return True
         return False
-    
+
     def get_history(self, count: int = 10) -> list:
         """Get recent organization history.
         
@@ -478,7 +478,7 @@ class SmartFileOrganizer:
             List of history entries.
         """
         return self.history.get_recent(count)
-    
+
     def get_rules(self) -> list:
         """Get all custom rules.
         
@@ -486,7 +486,7 @@ class SmartFileOrganizer:
             List of custom rules.
         """
         return self.rules_engine.get_rules()
-    
+
     def add_rule(
         self,
         name: str,
@@ -516,7 +516,7 @@ class SmartFileOrganizer:
 def main():
     """Main entry point with CLI support."""
     import argparse
-    
+
     parser = argparse.ArgumentParser(
         description="Smart File Organizer - Intelligent file management"
     )
@@ -548,9 +548,9 @@ def main():
         action='store_true',
         help='Show organization statistics'
     )
-    
+
     args = parser.parse_args()
-    
+
     # Handle CLI commands
     if args.undo:
         organizer = SmartFileOrganizer()
@@ -559,7 +559,7 @@ def main():
         else:
             print("✗ Nothing to undo")
         return
-    
+
     if args.history is not None:
         organizer = SmartFileOrganizer()
         entries = organizer.get_history(args.history)
@@ -572,7 +572,7 @@ def main():
         else:
             print("No history yet.")
         return
-    
+
     if args.rules:
         organizer = SmartFileOrganizer()
         rules = organizer.get_rules()
@@ -586,38 +586,38 @@ def main():
         else:
             print("No custom rules defined.")
         return
-    
+
     if args.add_rule:
         name, pattern, category, subcategory = args.add_rule
         organizer = SmartFileOrganizer()
         organizer.add_rule(name, pattern, category, subcategory)
         print(f"✓ Added rule: {name}")
         return
-    
+
     if args.stats:
         organizer = SmartFileOrganizer()
         stats = organizer.history.get_stats()
-        print(f"\n📊 Organization Statistics:\n")
+        print("\n📊 Organization Statistics:\n")
         print(f"  Total operations: {stats['total_operations']}")
         print(f"  Undoable: {stats['undoable']}")
         print(f"  Total size: {stats['total_size_bytes'] / 1024 / 1024:.2f} MB")
-        print(f"\n  By category:")
+        print("\n  By category:")
         for cat, count in stats.get('by_category', {}).items():
             print(f"    {cat}: {count}")
         return
-    
+
     # Default: Run the organizer
     organizer = SmartFileOrganizer()
-    
+
     def signal_handler(sig, frame):
         organizer.stop()
         sys.exit(0)
-    
+
     signal.signal(signal.SIGINT, signal_handler)
     signal.signal(signal.SIGTERM, signal_handler)
-    
+
     organizer.start()
-    
+
     # Keep main thread alive
     try:
         while True:

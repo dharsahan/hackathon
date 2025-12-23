@@ -6,8 +6,7 @@ Analyzes file content using pattern matching and heuristics.
 Second tier in the classification pipeline.
 """
 
-from pathlib import Path
-from typing import Optional, Dict, List, Tuple
+from typing import Optional, List, Tuple
 import re
 from dataclasses import dataclass
 
@@ -38,7 +37,7 @@ class ContentPattern:
 
 class PatternMatcher:
     """Matches content against predefined patterns."""
-    
+
     # Financial document patterns
     FINANCIAL_PATTERNS = [
         r'\b(?:invoice|bill|receipt|payment|transaction)\b',
@@ -47,7 +46,7 @@ class PatternMatcher:
         r'\b(?:tax|IRS|W-2|1099|salary|income)\b',
         r'\b(?:mortgage|loan|interest rate|principal)\b',
     ]
-    
+
     # Medical document patterns
     MEDICAL_PATTERNS = [
         r'\b(?:patient|diagnosis|prescription|medication)\b',
@@ -56,7 +55,7 @@ class PatternMatcher:
         r'\b(?:insurance claim|copay|deductible)\b',
         r'\b(?:blood pressure|heart rate|BMI|cholesterol)\b',
     ]
-    
+
     # Legal document patterns
     LEGAL_PATTERNS = [
         r'\b(?:contract|agreement|terms|conditions)\b',
@@ -65,7 +64,7 @@ class PatternMatcher:
         r'\b(?:plaintiff|defendant|lawsuit|litigation)\b',
         r'\b(?:notarized|affidavit|deposition)\b',
     ]
-    
+
     # Receipt patterns
     RECEIPT_PATTERNS = [
         r'\b(?:receipt|order|purchase|item|qty|quantity)\b',
@@ -74,7 +73,7 @@ class PatternMatcher:
         r'\b(?:thank you for your purchase)\b',
         r'\bitem\s+\d+\b',
     ]
-    
+
     # Invoice patterns
     INVOICE_PATTERNS = [
         r'\b(?:invoice|inv|bill to|ship to)\b',
@@ -82,7 +81,7 @@ class PatternMatcher:
         r'\b(?:due date|payment due|net 30|net 60)\b',
         r'\b(?:amount due|balance due|please pay)\b',
     ]
-    
+
     # Personal ID patterns
     PERSONAL_ID_PATTERNS = [
         r'\b\d{3}-\d{2}-\d{4}\b',  # SSN format
@@ -90,7 +89,7 @@ class PatternMatcher:
         r'\b(?:passport|driver.?s? license|ID card)\b',
         r'\b(?:date of birth|DOB)\b',
     ]
-    
+
     def __init__(self):
         """Initialize pattern matcher with compiled patterns."""
         self.pattern_sets = [
@@ -131,16 +130,16 @@ class PatternMatcher:
                 sensitivity_boost=0.8,  # Very high sensitivity
             ),
         ]
-        
+
         # Compile all patterns
         self._compiled_patterns = {}
         for pattern_set in self.pattern_sets:
             compiled = [
-                re.compile(p, re.IGNORECASE) 
+                re.compile(p, re.IGNORECASE)
                 for p in pattern_set.patterns
             ]
             self._compiled_patterns[pattern_set.category] = compiled
-    
+
     def match(self, text: str) -> List[Tuple[ContentPattern, int]]:
         """Match text against all pattern sets.
         
@@ -151,16 +150,16 @@ class PatternMatcher:
             List of (ContentPattern, match_count) tuples, sorted by match count.
         """
         results = []
-        
+
         for pattern_set in self.pattern_sets:
             match_count = 0
             for pattern in pattern_set.patterns:
                 if re.search(pattern, text, re.IGNORECASE):
                     match_count += 1
-            
+
             if match_count > 0:
                 results.append((pattern_set, match_count))
-        
+
         # Sort by match count descending
         results.sort(key=lambda x: x[1], reverse=True)
         return results
@@ -171,14 +170,14 @@ class Tier2ContentClassifier:
     
     Analyzes document content to determine category and sensitivity.
     """
-    
+
     # Minimum match threshold for classification
     MIN_MATCHES = 2
-    
+
     def __init__(self):
         """Initialize the content classifier."""
         self.pattern_matcher = PatternMatcher()
-    
+
     def classify(
         self,
         text: str,
@@ -201,13 +200,13 @@ class Tier2ContentClassifier:
                 classification_tier=2,
                 needs_deeper_analysis=True,
             )
-        
+
         # Normalize text
         text = text.lower()
-        
+
         # Match patterns
         matches = self.pattern_matcher.match(text)
-        
+
         if not matches or matches[0][1] < self.MIN_MATCHES:
             # No strong matches, return tier 1 result or unknown
             if tier1_result:
@@ -221,16 +220,16 @@ class Tier2ContentClassifier:
                 confidence=0.5,
                 needs_deeper_analysis=True,
             )
-        
+
         # Get best match
         best_pattern, match_count = matches[0]
-        
+
         # Calculate confidence based on match count
         confidence = min(0.5 + (match_count * 0.1), 0.9)
-        
+
         # Calculate sensitivity
         is_sensitive = best_pattern.sensitivity_boost > 0.3
-        
+
         result = ClassificationResult(
             category=FileCategory.DOCUMENTS,
             subcategory=f"{best_pattern.category}/{best_pattern.subcategory}",
@@ -252,14 +251,14 @@ class Tier2ContentClassifier:
                 ]
             }
         )
-        
+
         logger.debug(
             f"Tier 2 classification: {best_pattern.category}/"
             f"{best_pattern.subcategory} (matches: {match_count})"
         )
-        
+
         return result
-    
+
     def detect_sensitivity(self, text: str) -> Tuple[bool, float, List[str]]:
         """Detect if text contains sensitive information.
         
@@ -270,15 +269,15 @@ class Tier2ContentClassifier:
             Tuple of (is_sensitive, sensitivity_score, detected_types).
         """
         matches = self.pattern_matcher.match(text)
-        
+
         detected_types = []
         max_sensitivity = 0.0
-        
+
         for pattern, count in matches:
             if pattern.sensitivity_boost > 0:
                 detected_types.append(pattern.subcategory)
                 max_sensitivity = max(max_sensitivity, pattern.sensitivity_boost)
-        
+
         is_sensitive = max_sensitivity > 0.3
-        
+
         return is_sensitive, max_sensitivity, detected_types

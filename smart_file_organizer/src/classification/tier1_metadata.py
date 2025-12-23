@@ -7,9 +7,8 @@ This is the first tier in the classification pipeline.
 """
 
 from pathlib import Path
-from typing import Optional, Dict, Any, Tuple
+from typing import Optional, Dict, Any
 from dataclasses import dataclass, field
-from enum import Enum
 
 from src.config.categories import FileCategory, CATEGORY_MAPPING
 from src.utils.logging_config import get_logger
@@ -54,7 +53,7 @@ class ClassificationResult:
     needs_deeper_analysis: bool = False
     metadata: Dict[str, Any] = field(default_factory=dict)
     suggested_folder: Optional[str] = None
-    
+
     def __post_init__(self):
         """Set suggested folder based on category."""
         if self.suggested_folder is None:
@@ -62,7 +61,7 @@ class ClassificationResult:
                 self.suggested_folder = f"{self.category.value}/{self.subcategory}"
             else:
                 self.suggested_folder = self.category.value
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -83,18 +82,18 @@ class Tier1Classifier:
     Fast classification using file extension mapping and MIME type detection.
     This is always the first step in the classification pipeline.
     """
-    
+
     # Extensions that should trigger content analysis
     NEEDS_CONTENT_ANALYSIS = {
         '.pdf', '.docx', '.doc', '.txt', '.md', '.rtf'
     }
-    
+
     # Potentially sensitive file types
     POTENTIALLY_SENSITIVE = {
         '.pdf', '.docx', '.doc', '.xlsx', '.xls', '.csv',
         '.pptx', '.ppt', '.odt', '.ods'
     }
-    
+
     def __init__(self, category_mapping=None):
         """Initialize Tier 1 classifier.
         
@@ -103,7 +102,7 @@ class Tier1Classifier:
         """
         self.category_mapping = category_mapping or CATEGORY_MAPPING
         self._magic = None
-    
+
     def _get_magic(self):
         """Get magic instance for MIME detection."""
         if self._magic is None:
@@ -117,7 +116,7 @@ class Tier1Classifier:
             else:
                 self._magic = False
         return self._magic if self._magic is not False else None
-    
+
     def classify(self, file_path: Path) -> ClassificationResult:
         """Classify a file based on extension and MIME type.
         
@@ -129,13 +128,13 @@ class Tier1Classifier:
         """
         file_path = Path(file_path)
         extension = file_path.suffix.lower()
-        
+
         # Get category from extension mapping
         category, subcategory = self.category_mapping.get_category(extension)
-        
+
         # Get MIME type for validation
         mime_type = self._detect_mime_type(file_path)
-        
+
         # Validate MIME type matches extension category
         if mime_type:
             validated = self._validate_mime(mime_type, category)
@@ -144,13 +143,13 @@ class Tier1Classifier:
                     f"MIME/extension mismatch: {file_path.name} - "
                     f"extension suggests {category.value}, MIME is {mime_type}"
                 )
-        
+
         # Determine if deeper analysis needed
         needs_deeper = self._needs_deeper_analysis(extension, category)
-        
+
         # Check if potentially sensitive
         is_sensitive = extension in self.POTENTIALLY_SENSITIVE
-        
+
         result = ClassificationResult(
             category=category,
             subcategory=subcategory,
@@ -164,14 +163,14 @@ class Tier1Classifier:
                 "file_size": file_path.stat().st_size if file_path.exists() else 0,
             }
         )
-        
+
         logger.debug(
             f"Tier 1 classification: {file_path.name} -> "
             f"{category.value}/{subcategory or 'N/A'}"
         )
-        
+
         return result
-    
+
     def _detect_mime_type(self, file_path: Path) -> Optional[str]:
         """Detect MIME type using python-magic.
         
@@ -188,7 +187,7 @@ class Tier1Classifier:
             except Exception as e:
                 logger.debug(f"MIME detection failed: {e}")
         return None
-    
+
     def _validate_mime(self, mime_type: str, category: FileCategory) -> bool:
         """Validate that MIME type matches the expected category.
         
@@ -212,13 +211,13 @@ class Tier1Classifier:
             'application/x-7z': FileCategory.ARCHIVES,
             'application/x-executable': FileCategory.INSTALLERS,
         }
-        
+
         for prefix, expected_category in mime_category_map.items():
             if mime_type.startswith(prefix):
                 return category == expected_category
-        
+
         return True  # Unknown MIME types pass validation
-    
+
     def _needs_deeper_analysis(
         self,
         extension: str,
@@ -236,13 +235,13 @@ class Tier1Classifier:
         # Unknown files always need deeper analysis
         if category == FileCategory.UNKNOWN:
             return True
-        
+
         # Documents may need content analysis
         if extension in self.NEEDS_CONTENT_ANALYSIS:
             return True
-        
+
         return False
-    
+
     def is_document(self, file_path: Path) -> bool:
         """Check if file is a document type.
         
@@ -254,7 +253,7 @@ class Tier1Classifier:
         """
         result = self.classify(file_path)
         return result.category == FileCategory.DOCUMENTS
-    
+
     def is_image(self, file_path: Path) -> bool:
         """Check if file is an image.
         

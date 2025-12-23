@@ -10,7 +10,6 @@ from pathlib import Path
 from dataclasses import dataclass, field
 from typing import Optional, Dict, Any
 from datetime import datetime
-import os
 import stat
 
 from src.utils.logging_config import get_logger
@@ -68,7 +67,7 @@ class FileMetadata:
     permissions: Optional[str] = None
     is_hidden: bool = False
     extra: Dict[str, Any] = field(default_factory=dict)
-    
+
     @property
     def size_human(self) -> str:
         """Get human-readable file size."""
@@ -78,7 +77,7 @@ class FileMetadata:
                 return f"{size:.1f} {unit}"
             size /= 1024.0
         return f"{size:.1f} PB"
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -103,7 +102,7 @@ class MetadataReader:
     Extracts file system metadata, MIME types, and format-specific
     information like EXIF data for images.
     """
-    
+
     def __init__(self, extract_exif: bool = True):
         """Initialize metadata reader.
         
@@ -112,7 +111,7 @@ class MetadataReader:
         """
         self.extract_exif = extract_exif
         self._magic = None
-    
+
     def _get_magic(self):
         """Get magic instance for MIME detection."""
         if self._magic is None:
@@ -123,7 +122,7 @@ class MetadataReader:
                 logger.warning(f"python-magic not available: {e}")
                 self._magic = False
         return self._magic
-    
+
     def read(self, file_path: Path) -> FileMetadata:
         """Read metadata from a file.
         
@@ -134,12 +133,12 @@ class MetadataReader:
             FileMetadata object with extracted information.
         """
         file_path = Path(file_path)
-        
+
         if not file_path.exists():
             raise FileNotFoundError(f"File not found: {file_path}")
-        
+
         stat_info = file_path.stat()
-        
+
         # Basic file info
         metadata = FileMetadata(
             file_path=str(file_path.absolute()),
@@ -148,7 +147,7 @@ class MetadataReader:
             size_bytes=stat_info.st_size,
             is_hidden=file_path.name.startswith('.'),
         )
-        
+
         # Timestamps
         try:
             metadata.created_at = datetime.fromtimestamp(stat_info.st_ctime)
@@ -156,14 +155,14 @@ class MetadataReader:
             metadata.accessed_at = datetime.fromtimestamp(stat_info.st_atime)
         except (OSError, ValueError) as e:
             logger.debug(f"Could not read timestamps: {e}")
-        
+
         # Permissions
         try:
             mode = stat_info.st_mode
             metadata.permissions = stat.filemode(mode)
         except Exception:
             pass
-        
+
         # MIME type
         try:
             magic_instance = self._get_magic()
@@ -171,7 +170,7 @@ class MetadataReader:
                 metadata.mime_type = magic_instance.from_file(str(file_path))
         except Exception as e:
             logger.debug(f"Could not detect MIME type: {e}")
-        
+
         # Format-specific metadata
         if self.extract_exif and metadata.extension in {
             '.jpg', '.jpeg', '.png', '.tiff', '.tif', '.heic'
@@ -179,9 +178,9 @@ class MetadataReader:
             exif = self._extract_exif(file_path)
             if exif:
                 metadata.extra['exif'] = exif
-        
+
         return metadata
-    
+
     def _extract_exif(self, file_path: Path) -> Optional[Dict[str, Any]]:
         """Extract EXIF data from an image.
         
@@ -194,7 +193,7 @@ class MetadataReader:
         try:
             Image = _import_pil()
             img = Image.open(file_path)
-            
+
             # Get basic image info
             exif_data = {
                 'width': img.width,
@@ -202,19 +201,19 @@ class MetadataReader:
                 'format': img.format,
                 'mode': img.mode,
             }
-            
+
             # Try to get EXIF data
             if hasattr(img, '_getexif') and img._getexif():
                 from PIL.ExifTags import TAGS
                 raw_exif = img._getexif()
-                
+
                 # Extract useful EXIF tags
                 useful_tags = {
                     'Make', 'Model', 'DateTime', 'DateTimeOriginal',
                     'ExposureTime', 'FNumber', 'ISOSpeedRatings',
                     'FocalLength', 'GPSInfo', 'Software', 'Orientation'
                 }
-                
+
                 for tag_id, value in raw_exif.items():
                     tag_name = TAGS.get(tag_id, tag_id)
                     if tag_name in useful_tags:
@@ -227,14 +226,14 @@ class MetadataReader:
                             except:
                                 value = str(value)
                         exif_data[tag_name] = value
-            
+
             img.close()
             return exif_data
-            
+
         except Exception as e:
             logger.debug(f"Could not extract EXIF data: {e}")
             return None
-    
+
     def get_checksum(self, file_path: Path, algorithm: str = 'sha256') -> str:
         """Calculate file checksum.
         
@@ -246,11 +245,11 @@ class MetadataReader:
             Hexadecimal checksum string.
         """
         import hashlib
-        
+
         hasher = hashlib.new(algorithm)
-        
+
         with open(file_path, 'rb') as f:
             for chunk in iter(lambda: f.read(65536), b''):
                 hasher.update(chunk)
-        
+
         return hasher.hexdigest()

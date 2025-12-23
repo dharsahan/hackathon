@@ -9,7 +9,7 @@ Stores history in a JSON file for persistence across sessions.
 import json
 from pathlib import Path
 from typing import Optional, List, Dict
-from dataclasses import dataclass, field, asdict
+from dataclasses import dataclass, asdict
 from datetime import datetime
 import shutil
 
@@ -42,11 +42,11 @@ class HistoryEntry:
     subcategory: str = ""
     file_size: int = 0
     can_undo: bool = True
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         return asdict(self)
-    
+
     @classmethod
     def from_dict(cls, data: dict) -> 'HistoryEntry':
         """Create from dictionary."""
@@ -58,10 +58,10 @@ class HistoryTracker:
     
     Persists history to a JSON file for durability across sessions.
     """
-    
+
     DEFAULT_HISTORY_FILE = "organization_history.json"
     MAX_HISTORY_SIZE = 1000  # Maximum entries to keep
-    
+
     def __init__(
         self,
         history_file: Optional[Path] = None,
@@ -78,7 +78,7 @@ class HistoryTracker:
         self._history: List[HistoryEntry] = []
         self._next_id = 1
         self._load_history()
-    
+
     def _load_history(self) -> None:
         """Load history from file."""
         if self.history_file.exists():
@@ -86,7 +86,7 @@ class HistoryTracker:
                 with open(self.history_file, 'r') as f:
                     data = json.load(f)
                     self._history = [
-                        HistoryEntry.from_dict(entry) 
+                        HistoryEntry.from_dict(entry)
                         for entry in data.get('entries', [])
                     ]
                     self._next_id = data.get('next_id', 1)
@@ -94,23 +94,23 @@ class HistoryTracker:
             except (json.JSONDecodeError, KeyError) as e:
                 logger.warning(f"Error loading history: {e}")
                 self._history = []
-    
+
     def _save_history(self) -> None:
         """Save history to file."""
         self.history_file.parent.mkdir(parents=True, exist_ok=True)
-        
+
         # Trim history if too large
         if len(self._history) > self.MAX_HISTORY_SIZE:
             self._history = self._history[-self.MAX_HISTORY_SIZE:]
-        
+
         data = {
             'next_id': self._next_id,
             'entries': [entry.to_dict() for entry in self._history]
         }
-        
+
         with open(self.history_file, 'w') as f:
             json.dump(data, f, indent=2)
-    
+
     def record_move(
         self,
         source: Path,
@@ -131,9 +131,9 @@ class HistoryTracker:
         """
         try:
             file_size = destination.stat().st_size if destination.exists() else 0
-        except:
+        except OSError:
             file_size = 0
-        
+
         entry = HistoryEntry(
             id=self._next_id,
             timestamp=datetime.now().isoformat(),
@@ -145,14 +145,14 @@ class HistoryTracker:
             file_size=file_size,
             can_undo=True
         )
-        
+
         self._next_id += 1
         self._history.append(entry)
         self._save_history()
-        
+
         logger.debug(f"Recorded move: {source.name} -> {destination}")
         return entry
-    
+
     def undo_last(self) -> Optional[HistoryEntry]:
         """Undo the most recent undoable operation.
         
@@ -164,10 +164,10 @@ class HistoryTracker:
             entry = self._history[i]
             if entry.can_undo and entry.operation == "move":
                 return self._undo_entry(entry, i)
-        
+
         logger.info("Nothing to undo")
         return None
-    
+
     def undo_by_id(self, entry_id: int) -> Optional[HistoryEntry]:
         """Undo a specific operation by ID.
         
@@ -180,10 +180,10 @@ class HistoryTracker:
         for i, entry in enumerate(self._history):
             if entry.id == entry_id and entry.can_undo:
                 return self._undo_entry(entry, i)
-        
+
         logger.warning(f"Entry {entry_id} not found or cannot be undone")
         return None
-    
+
     def _undo_entry(self, entry: HistoryEntry, index: int) -> HistoryEntry:
         """Perform the undo operation.
         
@@ -196,24 +196,24 @@ class HistoryTracker:
         """
         dest = Path(entry.dest_path)
         source = Path(entry.source_path)
-        
+
         if not dest.exists():
             logger.warning(f"Cannot undo: destination file not found: {dest}")
             entry.can_undo = False
             self._save_history()
             return entry
-        
+
         # Move file back to original location
         source.parent.mkdir(parents=True, exist_ok=True)
         shutil.move(str(dest), str(source))
-        
+
         # Mark as undone
         entry.can_undo = False
         self._save_history()
-        
+
         logger.info(f"Undone: {dest.name} -> {source}")
         return entry
-    
+
     def get_recent(self, count: int = 10) -> List[HistoryEntry]:
         """Get recent history entries.
         
@@ -224,7 +224,7 @@ class HistoryTracker:
             List of recent entries (newest first).
         """
         return list(reversed(self._history[-count:]))
-    
+
     def get_by_date(
         self,
         date: datetime
@@ -242,7 +242,7 @@ class HistoryTracker:
             entry for entry in self._history
             if entry.timestamp.startswith(date_str)
         ]
-    
+
     def get_stats(self) -> Dict:
         """Get history statistics.
         
@@ -253,21 +253,21 @@ class HistoryTracker:
         for entry in self._history:
             cat = entry.category or "Unknown"
             categories[cat] = categories.get(cat, 0) + 1
-        
+
         return {
             "total_operations": len(self._history),
             "undoable": sum(1 for e in self._history if e.can_undo),
             "by_category": categories,
             "total_size_bytes": sum(e.file_size for e in self._history),
         }
-    
+
     def clear_history(self) -> None:
         """Clear all history."""
         self._history.clear()
         self._next_id = 1
         self._save_history()
         logger.info("History cleared")
-    
+
     def search(self, query: str) -> List[HistoryEntry]:
         """Search history by filename.
         

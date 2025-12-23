@@ -7,9 +7,8 @@ Handles moving, copying, renaming with atomic operations.
 """
 
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 import shutil
-import os
 from datetime import datetime
 
 from src.utils.logging_config import get_logger
@@ -24,7 +23,7 @@ class FileOperations:
     Provides atomic move/copy operations with automatic
     conflict resolution.
     """
-    
+
     def __init__(self, base_directory: Optional[Path] = None):
         """Initialize file operations.
         
@@ -32,7 +31,7 @@ class FileOperations:
             base_directory: Base directory for organized files.
         """
         self.base_directory = Path(base_directory) if base_directory else Path.home() / "Organized"
-    
+
     def move_file(
         self,
         source: Path,
@@ -54,36 +53,36 @@ class FileOperations:
         """
         source = Path(source)
         dest_dir = Path(dest_dir)
-        
+
         if not source.exists():
             raise FileProcessingError(
                 "Source file does not exist",
                 file_path=str(source),
                 error_code=ErrorCode.FILE_NOT_FOUND
             )
-        
+
         # Create destination directory
         dest_dir.mkdir(parents=True, exist_ok=True)
-        
+
         # Determine filename
         filename = new_name if new_name else source.name
         dest_path = dest_dir / filename
-        
+
         # Handle conflicts
         dest_path = self._resolve_conflict(dest_path)
-        
+
         try:
             shutil.move(str(source), str(dest_path))
             logger.info(f"Moved: {source.name} -> {dest_path}")
             return dest_path
-            
+
         except Exception as e:
             raise FileProcessingError(
                 f"Failed to move file: {e}",
                 file_path=str(source),
                 error_code=ErrorCode.PROCESSING_FAILED
             )
-    
+
     def copy_file(
         self,
         source: Path,
@@ -102,32 +101,32 @@ class FileOperations:
         """
         source = Path(source)
         dest_dir = Path(dest_dir)
-        
+
         if not source.exists():
             raise FileProcessingError(
                 "Source file does not exist",
                 file_path=str(source),
                 error_code=ErrorCode.FILE_NOT_FOUND
             )
-        
+
         dest_dir.mkdir(parents=True, exist_ok=True)
-        
+
         filename = new_name if new_name else source.name
         dest_path = dest_dir / filename
         dest_path = self._resolve_conflict(dest_path)
-        
+
         try:
             shutil.copy2(str(source), str(dest_path))
             logger.info(f"Copied: {source.name} -> {dest_path}")
             return dest_path
-            
+
         except Exception as e:
             raise FileProcessingError(
                 f"Failed to copy file: {e}",
                 file_path=str(source),
                 error_code=ErrorCode.PROCESSING_FAILED
             )
-    
+
     def rename_file(
         self,
         file_path: Path,
@@ -144,21 +143,21 @@ class FileOperations:
         """
         file_path = Path(file_path)
         new_path = file_path.parent / new_name
-        
+
         new_path = self._resolve_conflict(new_path)
-        
+
         try:
             file_path.rename(new_path)
             logger.info(f"Renamed: {file_path.name} -> {new_path.name}")
             return new_path
-            
+
         except Exception as e:
             raise FileProcessingError(
                 f"Failed to rename file: {e}",
                 file_path=str(file_path),
                 error_code=ErrorCode.PROCESSING_FAILED
             )
-    
+
     def _resolve_conflict(self, dest_path: Path) -> Path:
         """Resolve filename conflict by appending counter.
         
@@ -170,11 +169,11 @@ class FileOperations:
         """
         if not dest_path.exists():
             return dest_path
-        
+
         stem = dest_path.stem
         suffix = dest_path.suffix
         parent = dest_path.parent
-        
+
         counter = 1
         while True:
             new_name = f"{stem}_{counter}{suffix}"
@@ -188,7 +187,7 @@ class FileOperations:
                     file_path=str(dest_path),
                     error_code=ErrorCode.PROCESSING_FAILED
                 )
-    
+
     def create_date_path(
         self,
         base_dir: Path,
@@ -207,13 +206,13 @@ class FileOperations:
         """
         if date is None:
             date = datetime.now()
-        
+
         date_path = date.strftime(format_str)
         full_path = base_dir / date_path
         full_path.mkdir(parents=True, exist_ok=True)
-        
+
         return full_path
-    
+
     def get_destination_path(
         self,
         category: str,
@@ -231,17 +230,17 @@ class FileOperations:
             Full destination path.
         """
         dest = self.base_directory / category
-        
+
         if subcategory:
             dest = dest / subcategory
-        
+
         if use_date:
             dest = self.create_date_path(dest)
         else:
             dest.mkdir(parents=True, exist_ok=True)
-        
+
         return dest
-    
+
     def quarantine_file(
         self,
         file_path: Path,
@@ -258,7 +257,7 @@ class FileOperations:
         """
         quarantine_dir = self.base_directory / ".quarantine" / reason
         return self.move_file(file_path, quarantine_dir)
-    
+
     def is_safe_path(self, file_path: Path) -> bool:
         """Check if path is safe to operate on.
         
@@ -269,7 +268,7 @@ class FileOperations:
             True if path is safe.
         """
         file_path = Path(file_path).absolute()
-        
+
         # Check not operating on system directories
         unsafe_dirs = [
             Path("/"),
@@ -283,9 +282,9 @@ class FileOperations:
             Path.home() / ".config",
             Path.home() / ".local",
         ]
-        
+
         for unsafe in unsafe_dirs:
             if file_path == unsafe:
                 return False
-        
+
         return True

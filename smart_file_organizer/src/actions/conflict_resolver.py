@@ -6,7 +6,7 @@ Strategies for resolving file conflicts (duplicates, naming, etc.).
 """
 
 from pathlib import Path
-from typing import Optional, List, Callable
+from typing import Optional, List
 from enum import Enum
 from dataclasses import dataclass
 
@@ -50,7 +50,7 @@ class ConflictResolver:
     Supports multiple resolution strategies including renaming,
     skipping, overwriting, and smart comparisons.
     """
-    
+
     def __init__(
         self,
         strategy: ConflictStrategy = ConflictStrategy.RENAME,
@@ -64,10 +64,10 @@ class ConflictResolver:
         """
         self.strategy = strategy
         self.quarantine_dir = quarantine_dir or Path.home() / "Organized" / ".quarantine"
-        
+
         # History of resolved conflicts
         self._conflicts: List[ConflictInfo] = []
-    
+
     def resolve(
         self,
         source: Path,
@@ -86,63 +86,63 @@ class ConflictResolver:
             'proceed', 'skip', 'overwrite', or 'quarantine'.
         """
         strategy = strategy or self.strategy
-        
+
         # No conflict if destination doesn't exist
         if not dest_path.exists():
             return 'proceed', dest_path
-        
+
         conflict = ConflictInfo(
             source=source,
             existing=dest_path,
             conflict_type='name_collision'
         )
-        
+
         if strategy == ConflictStrategy.RENAME:
             new_path = self._generate_unique_name(dest_path)
             conflict.resolution = strategy
             conflict.result_path = new_path
             self._conflicts.append(conflict)
             return 'proceed', new_path
-        
+
         elif strategy == ConflictStrategy.SKIP:
             conflict.resolution = strategy
             self._conflicts.append(conflict)
             logger.info(f"Skipping (exists): {source.name}")
             return 'skip', None
-        
+
         elif strategy == ConflictStrategy.OVERWRITE:
             conflict.resolution = strategy
             conflict.result_path = dest_path
             self._conflicts.append(conflict)
             logger.info(f"Overwriting: {dest_path.name}")
             return 'overwrite', dest_path
-        
+
         elif strategy == ConflictStrategy.QUARANTINE:
             quarantine_path = self._quarantine(source)
             conflict.resolution = strategy
             conflict.result_path = quarantine_path
             self._conflicts.append(conflict)
             return 'quarantine', quarantine_path
-        
+
         elif strategy == ConflictStrategy.KEEP_NEWER:
             action, path = self._resolve_by_date(source, dest_path)
             conflict.resolution = strategy
             conflict.result_path = path
             self._conflicts.append(conflict)
             return action, path
-        
+
         elif strategy == ConflictStrategy.KEEP_LARGER:
             action, path = self._resolve_by_size(source, dest_path)
             conflict.resolution = strategy
             conflict.result_path = path
             self._conflicts.append(conflict)
             return action, path
-        
+
         else:
             # Default to rename
             new_path = self._generate_unique_name(dest_path)
             return 'proceed', new_path
-    
+
     def _generate_unique_name(self, path: Path) -> Path:
         """Generate unique filename by appending counter.
         
@@ -155,7 +155,7 @@ class ConflictResolver:
         stem = path.stem
         suffix = path.suffix
         parent = path.parent
-        
+
         counter = 1
         while True:
             new_name = f"{stem}_{counter}{suffix}"
@@ -168,7 +168,7 @@ class ConflictResolver:
                 from datetime import datetime
                 timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
                 return parent / f"{stem}_{timestamp}{suffix}"
-    
+
     def _quarantine(self, file_path: Path) -> Path:
         """Move file to quarantine directory.
         
@@ -182,7 +182,7 @@ class ConflictResolver:
         dest = self.quarantine_dir / file_path.name
         dest = self._generate_unique_name(dest)
         return dest
-    
+
     def _resolve_by_date(self, source: Path, existing: Path) -> tuple:
         """Resolve by keeping newer file.
         
@@ -195,7 +195,7 @@ class ConflictResolver:
         """
         source_mtime = source.stat().st_mtime
         existing_mtime = existing.stat().st_mtime
-        
+
         if source_mtime > existing_mtime:
             # Source is newer, overwrite
             logger.info(f"Overwriting (source newer): {existing.name}")
@@ -204,7 +204,7 @@ class ConflictResolver:
             # Existing is newer, skip
             logger.info(f"Skipping (existing newer): {source.name}")
             return 'skip', None
-    
+
     def _resolve_by_size(self, source: Path, existing: Path) -> tuple:
         """Resolve by keeping larger file.
         
@@ -217,7 +217,7 @@ class ConflictResolver:
         """
         source_size = source.stat().st_size
         existing_size = existing.stat().st_size
-        
+
         if source_size > existing_size:
             # Source is larger, overwrite
             logger.info(f"Overwriting (source larger): {existing.name}")
@@ -226,7 +226,7 @@ class ConflictResolver:
             # Existing is larger or same, skip
             logger.info(f"Skipping (existing larger/equal): {source.name}")
             return 'skip', None
-    
+
     def get_conflict_history(self) -> List[ConflictInfo]:
         """Get history of resolved conflicts.
         
@@ -234,11 +234,11 @@ class ConflictResolver:
             List of ConflictInfo objects.
         """
         return self._conflicts.copy()
-    
+
     def clear_history(self) -> None:
         """Clear conflict history."""
         self._conflicts.clear()
-    
+
     def get_stats(self) -> dict:
         """Get conflict resolution statistics.
         
@@ -249,9 +249,9 @@ class ConflictResolver:
             'total': len(self._conflicts),
             'by_strategy': {},
         }
-        
+
         for conflict in self._conflicts:
             strategy = conflict.resolution.value if conflict.resolution else 'unknown'
             stats['by_strategy'][strategy] = stats['by_strategy'].get(strategy, 0) + 1
-        
+
         return stats

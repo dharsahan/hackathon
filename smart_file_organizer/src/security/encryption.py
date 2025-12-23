@@ -55,12 +55,12 @@ class EncryptedData:
     """
     ciphertext: bytes
     nonce_size: int = 12
-    
+
     @property
     def nonce(self) -> bytes:
         """Extract nonce from ciphertext."""
         return self.ciphertext[:self.nonce_size]
-    
+
     @property
     def encrypted_content(self) -> bytes:
         """Extract encrypted content without nonce."""
@@ -73,21 +73,21 @@ class AESEncryptor:
     Uses Galois/Counter Mode (GCM) for authenticated encryption,
     providing both confidentiality and integrity.
     """
-    
+
     NONCE_SIZE = 12      # 96 bits (recommended for GCM)
     KEY_SIZE = 32        # 256 bits
     BUFFER_SIZE = 65536  # 64KB chunk for file operations
-    
+
     def __init__(self):
         """Initialize AES encryptor."""
         self._verify_available()
-    
+
     def _verify_available(self) -> None:
         """Verify cryptography library is available."""
         AESGCM_cls = _import_cryptography()
         if not AESGCM_cls or AESGCM_cls is False:
             logger.warning("cryptography library not available")
-    
+
     def encrypt_bytes(
         self,
         data: bytes,
@@ -114,27 +114,27 @@ class AESEncryptor:
                 operation="encrypt",
                 error_code=ErrorCode.ENCRYPTION_FAILED
             )
-        
+
         if len(key) != self.KEY_SIZE:
             raise EncryptionError(
                 f"Key must be {self.KEY_SIZE} bytes",
                 operation="encrypt",
                 error_code=ErrorCode.ENCRYPTION_FAILED
             )
-        
+
         try:
             nonce = os.urandom(self.NONCE_SIZE)
             aesgcm = AESGCM_cls(key)
             ciphertext = aesgcm.encrypt(nonce, data, associated_data)
             return nonce + ciphertext
-            
+
         except Exception as e:
             raise EncryptionError(
                 f"Encryption failed: {e}",
                 operation="encrypt",
                 error_code=ErrorCode.ENCRYPTION_FAILED
             )
-    
+
     def decrypt_bytes(
         self,
         encrypted_data: bytes,
@@ -161,35 +161,35 @@ class AESEncryptor:
                 operation="decrypt",
                 error_code=ErrorCode.DECRYPTION_FAILED
             )
-        
+
         if len(key) != self.KEY_SIZE:
             raise EncryptionError(
                 f"Key must be {self.KEY_SIZE} bytes",
                 operation="decrypt",
                 error_code=ErrorCode.DECRYPTION_FAILED
             )
-        
+
         if len(encrypted_data) <= self.NONCE_SIZE:
             raise EncryptionError(
                 "Invalid encrypted data: too short",
                 operation="decrypt",
                 error_code=ErrorCode.DECRYPTION_FAILED
             )
-        
+
         try:
             nonce = encrypted_data[:self.NONCE_SIZE]
             ciphertext = encrypted_data[self.NONCE_SIZE:]
-            
+
             aesgcm = AESGCM_cls(key)
             return aesgcm.decrypt(nonce, ciphertext, associated_data)
-            
+
         except Exception as e:
             raise EncryptionError(
                 f"Decryption failed: {e}",
                 operation="decrypt",
                 error_code=ErrorCode.DECRYPTION_FAILED
             )
-    
+
     def encrypt_file(
         self,
         input_path: Path,
@@ -208,15 +208,15 @@ class AESEncryptor:
         """
         with open(input_path, 'rb') as f:
             data = f.read()
-        
+
         encrypted = self.encrypt_bytes(data, key)
-        
+
         with open(output_path, 'wb') as f:
             f.write(encrypted)
-        
+
         logger.info(f"Encrypted file: {input_path.name} -> {output_path.name}")
         return output_path
-    
+
     def decrypt_file(
         self,
         input_path: Path,
@@ -235,15 +235,15 @@ class AESEncryptor:
         """
         with open(input_path, 'rb') as f:
             encrypted = f.read()
-        
+
         decrypted = self.decrypt_bytes(encrypted, key)
-        
+
         with open(output_path, 'wb') as f:
             f.write(decrypted)
-        
+
         logger.info(f"Decrypted file: {input_path.name} -> {output_path.name}")
         return output_path
-    
+
     def is_available(self) -> bool:
         """Check if encryption is available.
         
@@ -260,11 +260,11 @@ class SecureArchiver:
     Uses pyzipper for creating password-protected ZIP files
     with AES-256 encryption.
     """
-    
+
     def __init__(self):
         """Initialize secure archiver."""
         pass
-    
+
     def create_archive(
         self,
         file_paths: List[Path],
@@ -293,7 +293,7 @@ class SecureArchiver:
                 operation="create_archive",
                 error_code=ErrorCode.ENCRYPTION_FAILED
             )
-        
+
         try:
             with pyzipper_lib.AESZipFile(
                 archive_path,
@@ -303,14 +303,14 @@ class SecureArchiver:
             ) as zf:
                 zf.setpassword(password.encode('utf-8'))
                 zf.setencryption(pyzipper_lib.WZ_AES, nbits=256)
-                
+
                 for file_path in file_paths:
                     if file_path.exists():
                         zf.write(file_path, arcname=file_path.name)
-            
+
             logger.info(f"Created encrypted archive: {archive_path.name}")
             return archive_path
-            
+
         except Exception as e:
             raise EncryptionError(
                 f"Failed to create archive: {e}",
@@ -318,7 +318,7 @@ class SecureArchiver:
                 operation="create_archive",
                 error_code=ErrorCode.ENCRYPTION_FAILED
             )
-    
+
     def create_single_file_archive(
         self,
         file_path: Path,
@@ -335,7 +335,7 @@ class SecureArchiver:
         """
         archive_path = file_path.with_suffix('.zip')
         return self.create_archive([file_path], archive_path, password)
-    
+
     def extract_archive(
         self,
         archive_path: Path,
@@ -362,20 +362,20 @@ class SecureArchiver:
                 operation="extract_archive",
                 error_code=ErrorCode.DECRYPTION_FAILED
             )
-        
+
         dest_dir.mkdir(parents=True, exist_ok=True)
-        
+
         try:
             with pyzipper_lib.AESZipFile(archive_path, 'r') as zf:
                 zf.setpassword(password.encode('utf-8'))
                 zf.extractall(dest_dir)
                 extracted = [dest_dir / name for name in zf.namelist()]
-            
+
             logger.info(
                 f"Extracted {len(extracted)} files from {archive_path.name}"
             )
             return extracted
-            
+
         except Exception as e:
             raise EncryptionError(
                 f"Failed to extract archive: {e}",
@@ -383,7 +383,7 @@ class SecureArchiver:
                 operation="extract_archive",
                 error_code=ErrorCode.DECRYPTION_FAILED
             )
-    
+
     def is_available(self) -> bool:
         """Check if archiver is available.
         

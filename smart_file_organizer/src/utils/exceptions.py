@@ -7,37 +7,37 @@ All exceptions include error codes for programmatic handling.
 """
 
 from enum import Enum
-from typing import Optional, Any
+from typing import Optional
 
 
 class ErrorCode(Enum):
     """Error codes for programmatic error handling."""
-    
+
     # General errors (1000-1099)
     UNKNOWN_ERROR = 1000
     CONFIGURATION_ERROR = 1001
     FILE_NOT_FOUND = 1002
     PERMISSION_DENIED = 1003
-    
+
     # Processing errors (1100-1199)
     PROCESSING_FAILED = 1100
     UNSUPPORTED_FILE_TYPE = 1101
     FILE_TOO_LARGE = 1102
     FILE_CORRUPTED = 1103
-    
+
     # Classification errors (1200-1299)
     CLASSIFICATION_FAILED = 1200
     LLM_UNAVAILABLE = 1201
     OCR_FAILED = 1202
     EXTRACTION_FAILED = 1203
-    
+
     # Security errors (1300-1399)
     ENCRYPTION_FAILED = 1300
     DECRYPTION_FAILED = 1301
     KEY_DERIVATION_FAILED = 1302
     SECURE_DELETE_FAILED = 1303
     INVALID_PASSWORD = 1304
-    
+
     # Deduplication errors (1400-1499)
     DEDUPLICATION_FAILED = 1400
     HASH_COMPUTATION_FAILED = 1401
@@ -53,7 +53,7 @@ class SmartOrganizerError(Exception):
         details: Additional error context.
         cause: Original exception that caused this error.
     """
-    
+
     def __init__(
         self,
         message: str,
@@ -74,7 +74,7 @@ class SmartOrganizerError(Exception):
         self.error_code = error_code
         self.details = details or {}
         self.cause = cause
-    
+
     def __str__(self) -> str:
         """Return a formatted error string."""
         result = f"[{self.error_code.name}] {self.message}"
@@ -83,7 +83,7 @@ class SmartOrganizerError(Exception):
         if self.cause:
             result += f" | Caused by: {type(self.cause).__name__}: {self.cause}"
         return result
-    
+
     def to_dict(self) -> dict:
         """Convert exception to dictionary for logging/serialization."""
         return {
@@ -104,7 +104,7 @@ class ConfigurationError(SmartOrganizerError):
         - Missing required configuration values
         - Invalid configuration values
     """
-    
+
     def __init__(
         self,
         message: str,
@@ -133,7 +133,7 @@ class FileProcessingError(SmartOrganizerError):
         - File is corrupted
         - File type not supported
     """
-    
+
     def __init__(
         self,
         message: str,
@@ -160,7 +160,7 @@ class ClassificationError(SmartOrganizerError):
         - Unable to extract text
         - Classification timeout
     """
-    
+
     def __init__(
         self,
         message: str,
@@ -190,7 +190,7 @@ class ExtractionError(SmartOrganizerError):
         - OCR failure
         - Unsupported document format
     """
-    
+
     def __init__(
         self,
         message: str,
@@ -219,7 +219,7 @@ class EncryptionError(SmartOrganizerError):
         - Corrupted encrypted file
         - Key derivation failure
     """
-    
+
     def __init__(
         self,
         message: str,
@@ -249,7 +249,7 @@ class DeduplicationError(SmartOrganizerError):
         - Index corruption
         - File comparison error
     """
-    
+
     def __init__(
         self,
         message: str,

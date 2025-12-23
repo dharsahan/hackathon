@@ -6,7 +6,6 @@ Uses local LLM (Ollama) for semantic document classification.
 Highest accuracy tier in the classification pipeline.
 """
 
-from pathlib import Path
 from typing import Optional, Dict, List, Any
 from dataclasses import dataclass
 import json
@@ -15,7 +14,6 @@ import re
 from src.classification.tier1_metadata import ClassificationResult
 from src.config.categories import FileCategory
 from src.utils.logging_config import get_logger
-from src.utils.exceptions import ClassificationError
 
 logger = get_logger(__name__)
 
@@ -57,11 +55,11 @@ class LLMResponse:
     confidence: float = 0.8
     keywords: List[str] = None
     suggested_name: Optional[str] = None
-    
+
     def __post_init__(self):
         if self.keywords is None:
             self.keywords = []
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """Convert to dictionary."""
         return {
@@ -78,7 +76,7 @@ class LLMResponse:
 
 class PromptTemplates:
     """Prompt templates for LLM classification."""
-    
+
     SYSTEM_PROMPT = """You are an expert file archivist and document classifier.
 Your task is to analyze document content and classify it accurately.
 You must respond with ONLY valid JSON - no other text, explanations, or formatting."""
@@ -128,7 +126,7 @@ class Tier3LLMClassifier:
     Uses local Ollama models for accurate document classification.
     Falls back gracefully if LLM is unavailable.
     """
-    
+
     # Category mapping from LLM response to FileCategory
     LLM_TO_CATEGORY = {
         "finance": FileCategory.DOCUMENTS,
@@ -141,7 +139,7 @@ class Tier3LLMClassifier:
         "insurance": FileCategory.DOCUMENTS,
         "other": FileCategory.DOCUMENTS,
     }
-    
+
     def __init__(
         self,
         model: str = "llama3",
@@ -162,7 +160,7 @@ class Tier3LLMClassifier:
         self.temperature = temperature
         self.timeout = timeout
         self.templates = PromptTemplates()
-    
+
     def is_available(self) -> bool:
         """Check if LLM is available.
         
@@ -172,7 +170,7 @@ class Tier3LLMClassifier:
         ollama = _import_ollama()
         if not ollama or ollama is False:
             return False
-        
+
         try:
             models = ollama.list()
             model_names = [m.get('name', '') for m in models.get('models', [])]
@@ -184,7 +182,7 @@ class Tier3LLMClassifier:
         except Exception as e:
             logger.debug(f"Ollama not available: {e}")
             return False
-    
+
     def list_models(self) -> List[str]:
         """List available Ollama models.
         
@@ -194,13 +192,13 @@ class Tier3LLMClassifier:
         ollama = _import_ollama()
         if not ollama or ollama is False:
             return []
-        
+
         try:
             models = ollama.list()
             return [m.get('name', '') for m in models.get('models', [])]
         except:
             return []
-    
+
     def classify(
         self,
         text: str,
@@ -219,18 +217,18 @@ class Tier3LLMClassifier:
         if not ollama or ollama is False:
             logger.warning("Ollama not available for classification")
             return None
-        
+
         # Truncate text to max length
         truncated = text[:self.max_text_length]
         if len(text) > self.max_text_length:
             truncated += "\n[...text truncated...]"
-        
+
         # Select prompt
         if use_simple_prompt:
             prompt = self.templates.SIMPLE_PROMPT.format(text=truncated)
         else:
             prompt = self.templates.CLASSIFICATION_PROMPT.format(text=truncated)
-        
+
         try:
             response = ollama.chat(
                 model=self.model,
@@ -243,14 +241,14 @@ class Tier3LLMClassifier:
                     'num_predict': 512,
                 }
             )
-            
+
             content = response['message']['content']
             return self._parse_response(content)
-            
+
         except Exception as e:
             logger.error(f"LLM classification failed: {e}")
             return None
-    
+
     def _parse_response(self, response_text: str) -> Optional[LLMResponse]:
         """Parse LLM response into structured format.
         
@@ -267,7 +265,7 @@ class Tier3LLMClassifier:
             return self._create_response(data)
         except json.JSONDecodeError:
             pass
-        
+
         # Try to extract JSON from response
         json_match = re.search(r'\{[^{}]*\}', response_text, re.DOTALL)
         if json_match:
@@ -276,7 +274,7 @@ class Tier3LLMClassifier:
                 return self._create_response(data)
             except json.JSONDecodeError:
                 pass
-        
+
         # Try to extract nested JSON (handles escaped content)
         json_match = re.search(
             r'\{(?:[^{}]|\{[^{}]*\})*\}',
@@ -289,10 +287,10 @@ class Tier3LLMClassifier:
                 return self._create_response(data)
             except json.JSONDecodeError:
                 pass
-        
+
         logger.warning(f"Could not parse LLM response: {response_text[:200]}")
         return None
-    
+
     def _create_response(self, data: dict) -> LLMResponse:
         """Create LLMResponse from parsed data.
         
@@ -312,7 +310,7 @@ class Tier3LLMClassifier:
             keywords=data.get('keywords', []),
             suggested_name=data.get('suggested_name'),
         )
-    
+
     def classify_with_result(
         self,
         text: str,
@@ -328,7 +326,7 @@ class Tier3LLMClassifier:
             ClassificationResult with LLM classification.
         """
         llm_response = self.classify(text)
-        
+
         if not llm_response:
             if tier1_result:
                 tier1_result.classification_tier = 3
@@ -341,13 +339,13 @@ class Tier3LLMClassifier:
                 confidence=0.5,
                 metadata={'llm_failed': True}
             )
-        
+
         # Map LLM category to FileCategory
         category = self.LLM_TO_CATEGORY.get(
             llm_response.category.lower(),
             FileCategory.DOCUMENTS
         )
-        
+
         return ClassificationResult(
             category=category,
             subcategory=f"{llm_response.category}/{llm_response.subcategory or 'General'}",

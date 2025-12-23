@@ -40,11 +40,11 @@ class WatcherConfig:
         """Create WatcherConfig from dictionary."""
         if not data:
             return cls()
-        
+
         watch_dirs = data.get("watch_directories", [])
         # Expand ~ in paths
         watch_dirs = [Path(d).expanduser() for d in watch_dirs]
-        
+
         return cls(
             watch_directories=watch_dirs or cls().watch_directories,
             ignore_patterns=data.get("ignore_patterns", cls().ignore_patterns),
@@ -182,11 +182,11 @@ class OrganizationConfig:
         """Create OrganizationConfig from dictionary."""
         if not data:
             return cls()
-        
+
         base_dir = Path(data.get("base_directory", "~/Organized")).expanduser()
         vault_dir = Path(data.get("vault_directory", "~/Organized/Vault")).expanduser()
         quarantine_dir = Path(data.get("quarantine_directory", "~/Organized/.quarantine")).expanduser()
-        
+
         return cls(
             organize_in_place=data.get("organize_in_place", True),
             base_directory=base_dir,
@@ -226,18 +226,18 @@ class Config:
         """
         if config_path is None:
             config_path = Path("config.yaml")
-        
+
         if not config_path.exists():
             logger.warning(f"Config file not found at {config_path}, using defaults")
             return cls()
-        
+
         try:
             with open(config_path, 'r', encoding='utf-8') as f:
                 data = yaml.safe_load(f) or {}
-            
+
             logger.info(f"Loaded configuration from {config_path}")
             return cls._from_dict(data)
-        
+
         except yaml.YAMLError as e:
             logger.error(f"Failed to parse config file: {e}")
             raise
@@ -302,8 +302,8 @@ class Config:
                 "date_format": self.organization.date_format
             }
         }
-        
+
         with open(config_path, 'w', encoding='utf-8') as f:
             yaml.dump(data, f, default_flow_style=False, sort_keys=False)
-        
+
         logger.info(f"Saved configuration to {config_path}")

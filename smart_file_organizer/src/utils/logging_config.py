@@ -36,7 +36,7 @@ def set_correlation_id(correlation_id: str) -> None:
 
 class JSONFormatter(logging.Formatter):
     """Formats log records as JSON for structured logging."""
-    
+
     def format(self, record: logging.LogRecord) -> str:
         """Format the log record as JSON."""
         log_data = {
@@ -46,11 +46,11 @@ class JSONFormatter(logging.Formatter):
             "message": record.getMessage(),
             "correlation_id": get_correlation_id(),
         }
-        
+
         # Add exception info if present
         if record.exc_info:
             log_data["exception"] = self.formatException(record.exc_info)
-        
+
         # Add extra fields
         if hasattr(record, 'file_path'):
             log_data["file_path"] = record.file_path
@@ -60,13 +60,13 @@ class JSONFormatter(logging.Formatter):
             log_data["operation"] = record.operation
         if hasattr(record, 'duration_ms'):
             log_data["duration_ms"] = record.duration_ms
-        
+
         return json.dumps(log_data)
 
 
 class ConsoleFormatter(logging.Formatter):
     """Human-readable colored console formatter."""
-    
+
     COLORS = {
         'DEBUG': '\033[36m',     # Cyan
         'INFO': '\033[32m',      # Green
@@ -75,20 +75,20 @@ class ConsoleFormatter(logging.Formatter):
         'CRITICAL': '\033[35m',  # Magenta
     }
     RESET = '\033[0m'
-    
+
     def format(self, record: logging.LogRecord) -> str:
         """Format with colors for console output."""
         color = self.COLORS.get(record.levelname, '')
         timestamp = datetime.now().strftime('%H:%M:%S')
-        
+
         # Build the message
         msg = f"{color}[{timestamp}] {record.levelname:8}{self.RESET} "
         msg += f"[{get_correlation_id()}] "
         msg += f"{record.name}: {record.getMessage()}"
-        
+
         if record.exc_info:
             msg += "\n" + self.formatException(record.exc_info)
-        
+
         return msg
 
 
@@ -112,14 +112,14 @@ def setup_logging(config: Optional[LoggingConfig] = None) -> None:
     """
     if config is None:
         config = LoggingConfig()
-    
+
     # Get the root logger for our application
     root_logger = logging.getLogger("smart_organizer")
     root_logger.setLevel(getattr(logging, config.level.upper()))
-    
+
     # Remove existing handlers
     root_logger.handlers.clear()
-    
+
     # Console handler
     if config.console_output:
         console_handler = logging.StreamHandler(sys.stdout)
@@ -128,12 +128,12 @@ def setup_logging(config: Optional[LoggingConfig] = None) -> None:
         else:
             console_handler.setFormatter(ConsoleFormatter())
         root_logger.addHandler(console_handler)
-    
+
     # File handler
     if config.file_output:
         config.log_dir.mkdir(parents=True, exist_ok=True)
         log_file = config.log_dir / "smart_organizer.log"
-        
+
         file_handler = logging.handlers.RotatingFileHandler(
             log_file,
             maxBytes=config.max_file_size,
@@ -142,7 +142,7 @@ def setup_logging(config: Optional[LoggingConfig] = None) -> None:
         )
         file_handler.setFormatter(JSONFormatter())
         root_logger.addHandler(file_handler)
-    
+
     # Prevent propagation to root logger
     root_logger.propagate = False
 
@@ -163,7 +163,7 @@ def get_logger(name: str) -> logging.Logger:
 
 class LogContext:
     """Context manager for adding extra context to log messages."""
-    
+
     def __init__(self, logger: logging.Logger, **context):
         """Initialize with context fields.
         
@@ -174,22 +174,22 @@ class LogContext:
         self.logger = logger
         self.context = context
         self._old_factory = None
-    
+
     def __enter__(self):
         """Set up the log record factory with extra context."""
         old_factory = logging.getLogRecordFactory()
         context = self.context
-        
+
         def record_factory(*args, **kwargs):
             record = old_factory(*args, **kwargs)
             for key, value in context.items():
                 setattr(record, key, value)
             return record
-        
+
         self._old_factory = old_factory
         logging.setLogRecordFactory(record_factory)
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Restore the original log record factory."""
         if self._old_factory:
@@ -199,7 +199,7 @@ class LogContext:
 
 class Timer:
     """Context manager for timing operations and logging duration."""
-    
+
     def __init__(self, logger: logging.Logger, operation: str):
         """Initialize timer.
         
@@ -210,28 +210,28 @@ class Timer:
         self.logger = logger
         self.operation = operation
         self.start_time = None
-    
+
     def __enter__(self):
         """Start the timer."""
         import time
         self.start_time = time.perf_counter()
         return self
-    
+
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Stop the timer and log the duration."""
         import time
         duration_ms = (time.perf_counter() - self.start_time) * 1000
-        
+
         old_factory = logging.getLogRecordFactory()
-        
+
         def factory(*args, **kwargs):
             record = old_factory(*args, **kwargs)
             record.operation = self.operation
             record.duration_ms = round(duration_ms, 2)
             return record
-        
+
         logging.setLogRecordFactory(factory)
         self.logger.info(f"Operation completed: {self.operation}")
         logging.setLogRecordFactory(old_factory)
-        
+
         return False

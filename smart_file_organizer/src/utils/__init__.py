@@ -10,6 +10,7 @@ from .exceptions import (
     DeduplicationError,
     ExtractionError,
 )
+from .notifications import DesktopNotifier, NotificationConfig
 
 __all__ = [
     "setup_logging",
@@ -21,4 +22,6 @@ __all__ = [
     "EncryptionError",
     "DeduplicationError",
     "ExtractionError",
+    "DesktopNotifier",
+    "NotificationConfig",
 ]

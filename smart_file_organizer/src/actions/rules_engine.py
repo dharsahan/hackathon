@@ -8,8 +8,8 @@ Rules are evaluated before AI classification for priority handling.
 
 import re
 from pathlib import Path
-from typing import Optional, List, Dict, Any, Callable
-from dataclasses import dataclass, field, asdict
+from typing import Optional, List
+from dataclasses import dataclass, asdict
 from enum import Enum
 import json
 
@@ -57,20 +57,20 @@ class CustomRule:
     subcategory: str = ""
     is_sensitive: bool = False
     destination_folder: Optional[str] = None
-    
+
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         data = asdict(self)
         data['match_type'] = self.match_type.value
         return data
-    
+
     @classmethod
     def from_dict(cls, data: dict) -> 'CustomRule':
         """Create from dictionary."""
         data = data.copy()
         data['match_type'] = MatchType(data.get('match_type', 'contains'))
         return cls(**data)
-    
+
     def matches(self, file_path: Path) -> bool:
         """Check if a file matches this rule.
         
@@ -82,37 +82,37 @@ class CustomRule:
         """
         if not self.enabled:
             return False
-        
+
         filename = file_path.name.lower()
         pattern_lower = self.pattern.lower()
-        
+
         try:
             if self.match_type == MatchType.CONTAINS:
                 return pattern_lower in filename
-            
+
             elif self.match_type == MatchType.STARTS_WITH:
                 return filename.startswith(pattern_lower)
-            
+
             elif self.match_type == MatchType.ENDS_WITH:
                 return filename.endswith(pattern_lower)
-            
+
             elif self.match_type == MatchType.REGEX:
                 return bool(re.search(self.pattern, filename, re.IGNORECASE))
-            
+
             elif self.match_type == MatchType.EXTENSION:
                 ext = file_path.suffix.lower().lstrip('.')
                 return ext == pattern_lower.lstrip('.')
-            
+
             elif self.match_type == MatchType.SIZE_GT:
                 return file_path.stat().st_size > int(self.pattern)
-            
+
             elif self.match_type == MatchType.SIZE_LT:
                 return file_path.stat().st_size < int(self.pattern)
-            
+
         except Exception as e:
             logger.debug(f"Rule match error: {e}")
             return False
-        
+
         return False
 
 
@@ -121,9 +121,9 @@ class RulesEngine:
     
     Rules are stored in a JSON file and evaluated in priority order.
     """
-    
+
     DEFAULT_RULES_FILE = "custom_rules.json"
-    
+
     def __init__(
         self,
         rules_file: Optional[Path] = None,
@@ -140,11 +140,11 @@ class RulesEngine:
         self._rules: List[CustomRule] = []
         self._next_id = 1
         self._load_rules()
-        
+
         # Add default rules if none exist
         if not self._rules:
             self._add_default_rules()
-    
+
     def _load_rules(self) -> None:
         """Load rules from file."""
         if self.rules_file.exists():
@@ -152,7 +152,7 @@ class RulesEngine:
                 with open(self.rules_file, 'r') as f:
                     data = json.load(f)
                     self._rules = [
-                        CustomRule.from_dict(rule) 
+                        CustomRule.from_dict(rule)
                         for rule in data.get('rules', [])
                     ]
                     self._next_id = data.get('next_id', 1)
@@ -160,19 +160,19 @@ class RulesEngine:
             except (json.JSONDecodeError, KeyError) as e:
                 logger.warning(f"Error loading rules: {e}")
                 self._rules = []
-    
+
     def _save_rules(self) -> None:
         """Save rules to file."""
         self.rules_file.parent.mkdir(parents=True, exist_ok=True)
-        
+
         data = {
             'next_id': self._next_id,
             'rules': [rule.to_dict() for rule in self._rules]
         }
-        
+
         with open(self.rules_file, 'w') as f:
             json.dump(data, f, indent=2)
-    
+
     def _add_default_rules(self) -> None:
         """Add useful default rules."""
         defaults = [
@@ -224,12 +224,12 @@ class RulesEngine:
                 priority=95
             ),
         ]
-        
+
         self._rules = defaults
         self._next_id = len(defaults) + 1
         self._save_rules()
         logger.info(f"Created {len(defaults)} default rules")
-    
+
     def evaluate(self, file_path: Path) -> Optional[ClassificationResult]:
         """Evaluate a file against all rules.
         
@@ -240,18 +240,18 @@ class RulesEngine:
             ClassificationResult if a rule matches, None otherwise.
         """
         file_path = Path(file_path)
-        
+
         # Sort by priority (highest first)
         sorted_rules = sorted(
             self._rules,
             key=lambda r: r.priority,
             reverse=True
         )
-        
+
         for rule in sorted_rules:
             if rule.matches(file_path):
                 logger.info(f"Rule matched: '{rule.name}' for {file_path.name}")
-                
+
                 return ClassificationResult(
                     category=FileCategory.DOCUMENTS,  # Default, will use subcategory
                     subcategory=f"{rule.category}/{rule.subcategory}" if rule.subcategory else rule.category,
@@ -265,9 +265,9 @@ class RulesEngine:
                     },
                     suggested_folder=rule.destination_folder or f"{rule.category}/{rule.subcategory or 'General'}"
                 )
-        
+
         return None
-    
+
     def add_rule(
         self,
         name: str,
@@ -302,14 +302,14 @@ class RulesEngine:
             priority=priority,
             is_sensitive=is_sensitive
         )
-        
+
         self._next_id += 1
         self._rules.append(rule)
         self._save_rules()
-        
+
         logger.info(f"Added rule: {name}")
         return rule
-    
+
     def remove_rule(self, rule_id: int) -> bool:
         """Remove a rule by ID.
         
@@ -326,7 +326,7 @@ class RulesEngine:
                 logger.info(f"Removed rule: {removed.name}")
                 return True
         return False
-    
+
     def enable_rule(self, rule_id: int, enabled: bool = True) -> bool:
         """Enable or disable a rule.
         
@@ -343,7 +343,7 @@ class RulesEngine:
                 self._save_rules()
                 return True
         return False
-    
+
     def get_rules(self) -> List[CustomRule]:
         """Get all rules.
         
@@ -351,7 +351,7 @@ class RulesEngine:
             List of all rules.
         """
         return self._rules.copy()
-    
+
     def get_rule(self, rule_id: int) -> Optional[CustomRule]:
         """Get a rule by ID.
         
@@ -365,7 +365,7 @@ class RulesEngine:
             if rule.id == rule_id:
                 return rule
         return None
-    
+
     def update_rule(self, rule_id: int, **kwargs) -> Optional[CustomRule]:
         """Update a rule's properties.
         
