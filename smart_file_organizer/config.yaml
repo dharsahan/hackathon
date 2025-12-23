@@ -24,7 +24,7 @@ watcher:
 
 classification:
   # LLM model to use for semantic classification
-  llm_model: "llama3"
+  llm_model: "gemma3:270m"
   
   # LLM backend: "ollama" or "llama-cpp"
   llm_backend: "ollama"

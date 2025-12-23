@@ -283,13 +283,33 @@ class DeduplicationEngine:
         result.full_hash = full_hash
         
         if full_hash in self._full_hash_index:
-            # Exact duplicate found
-            result.status = DuplicateStatus.EXACT_DUPLICATE
-            result.duplicate_of = self._full_hash_index[full_hash]
-            logger.info(
-                f"Duplicate found: {file_path.name} = "
-                f"{result.duplicate_of.name}"
-            )
+            original_path = self._full_hash_index[full_hash]
+            
+            # Check if the "original" file still exists
+            # If not, this is just a moved file, not a duplicate!
+            if original_path.exists() and original_path != file_path:
+                # True duplicate found
+                result.status = DuplicateStatus.EXACT_DUPLICATE
+                result.duplicate_of = original_path
+                logger.info(
+                    f"Duplicate found: {file_path.name} = "
+                    f"{result.duplicate_of.name}"
+                )
+            else:
+                # Original file was moved/deleted - update index with new location
+                self._full_hash_index[full_hash] = file_path
+                
+                # Update size and partial hash indexes too
+                if original_path in self._size_index.get(file_size, []):
+                    self._size_index[file_size].remove(original_path)
+                self._size_index[file_size].append(file_path)
+                
+                if original_path in self._partial_hash_index.get(partial_hash, []):
+                    self._partial_hash_index[partial_hash].remove(original_path)
+                self._partial_hash_index[partial_hash].append(file_path)
+                
+                result.status = DuplicateStatus.UNIQUE
+                logger.debug(f"File moved, updating index: {file_path.name}")
         else:
             # Not a duplicate, add to indexes
             self._full_hash_index[full_hash] = file_path
