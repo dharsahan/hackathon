@@ -1,101 +1,44 @@
-# Smart File Organizer Configuration
-# ===================================
-
-watcher:
-  # Directories to monitor for new files
-  watch_directories:
-    - ~/Downloads
-    - ~/Desktop
-  
-  # File patterns to ignore (glob format)
-  ignore_patterns:
-    - "*.tmp"
-    - "*.crdownload"
-    - "~$*"
-    - ".DS_Store"
-    - "Thumbs.db"
-    - "*.part"
-  
-  # Debounce time in seconds (wait for file writes to complete)
-  debounce_seconds: 1.0
-  
-  # Watch subdirectories recursively
-  recursive: false
-
 classification:
-  # LLM model to use for semantic classification
-  llm_model: "gemma3:270m"
-  
-  # LLM backend: "ollama" or "llama-cpp"
-  llm_backend: "ollama"
-  
-  # Fall back to zero-shot classification if LLM unavailable
   fallback_to_zero_shot: true
-  
-  # Zero-shot model for fallback classification
-  zero_shot_model: "facebook/bart-large-mnli"
-  
-  # Maximum text length to send to LLM
+  llm_backend: ollama
+  llm_model: gemma3:270m
   max_text_length: 2000
-  
-  # Enable OCR for image-based documents
   ocr_enabled: true
-  
-  # OCR languages (Tesseract format)
-  ocr_languages: "eng"
-
-security:
-  # Enable encryption for sensitive files
-  enable_encryption: true
-  
-  # Encryption algorithm
-  encryption_algorithm: "AES-256-GCM"
-  
-  # Key derivation function
-  key_derivation: "argon2id"
-  
-  # Argon2 parameters
-  argon2_memory_cost: 65536  # 64MB
-  argon2_time_cost: 3
-  argon2_parallelism: 4
-  
-  # Number of secure delete passes
-  secure_delete_passes: 3
-
+  ocr_languages: eng
+  zero_shot_model: facebook/bart-large-mnli
 deduplication:
-  # Enable duplicate detection
+  duplicate_action: quarantine
   enabled: true
-  
-  # Use partial hashing for faster comparison
-  use_partial_hash: true
-  
-  # Chunk size for partial hashing (bytes)
   partial_hash_size: 4096
-  
-  # Threshold for perceptual hash similarity (0-64, lower = more similar)
   perceptual_hash_threshold: 5
-  
-  # Action for duplicates: "quarantine", "delete", "hardlink", "skip"
-  duplicate_action: "quarantine"
-
+  use_partial_hash: true
 organization:
-  # Organize files within the source directory (Downloads/Desktop)
-  # If true, files stay in Downloads/Documents/... etc
-  # If false, files move to base_directory
-  organize_in_place: true
-  
-  # Base directory for organized files (used when organize_in_place is false)
   base_directory: ~/Organized
-  
-  # Vault directory for encrypted sensitive files
-  vault_directory: ~/Organized/Vault
-  
-  # Quarantine directory for duplicates
+  date_format: '%Y/%m'
+  organize_in_place: true
   quarantine_directory: ~/Organized/.quarantine
-  
-  # Include date in destination path
-  use_date_folders: false
-  
-  # Date folder format (strftime format)
-  date_format: "%Y/%m"
-
+  use_date_folders: true
+  vault_directory: ~/Organized/Vault
+security:
+  argon2_memory_cost: 65536
+  argon2_parallelism: 4
+  argon2_time_cost: 3
+  enable_encryption: true
+  encryption_algorithm: AES-256-GCM
+  key_derivation: argon2id
+  secure_delete_passes: 3
+watcher:
+  debounce_seconds: 1.0
+  directories:
+  - /home/dharshan/Documents
+  ignore_patterns:
+  - '*.tmp'
+  - '*.crdownload'
+  - ~$*
+  - .DS_Store
+  - Thumbs.db
+  - '*.part'
+  recursive: false
+  watch_directories:
+  - ~/Downloads
+  - ~/Desktop
