@@ -1,0 +1,56 @@
+name: Android Build
+
+on:
+  push:
+    branches: [ "android-implementation" ]
+  pull_request:
+    branches: [ "android-implementation" ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: |
+          pip install -r android/requirements.txt
+          pip install pyyaml pytest
+      - name: Run Tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}/smart_file_organizer
+        run: |
+          python3 -m unittest discover android/tests
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # We need to restructure the project for Buildozer to see smart_file_organizer
+      # Buildozer usually copies the `source.dir` (./android).
+      # But our code needs `smart_file_organizer` module.
+      # So we copy smart_file_organizer into android/smart_file_organizer
+      - name: Prepare source for Buildozer
+        run: |
+          cp -r smart_file_organizer android/
+          ls -R android/
+
+      - name: Build with Buildozer
+        uses: ArtemSBulgakov/buildozer-action@v1
+        id: buildozer
+        with:
+          workdir: android
+          buildozer_version: master
+          command: buildozer android debug
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: package
+          path: android/bin/*.apk

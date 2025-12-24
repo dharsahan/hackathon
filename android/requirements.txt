@@ -1,0 +1,16 @@
+# Core Android Dependencies
+kivy==2.3.0
+kivymd==1.2.0
+
+# App Logic Dependencies
+pyyaml>=6.0
+pathlib>=1.0.1
+ImageHash>=4.3.1
+Pillow>=10.0.0
+cryptography>=42.0.0
+
+# Utilities
+# Send2Trash might not work on Android, we'll see or use os.remove/shutil.move
+python-docx>=1.1.0
+
+# Buildozer will handle these, but listed for reference/testing in env
