@@ -209,11 +209,8 @@ class SmartFileOrganizer:
             if tier1_result.needs_deeper_analysis:
                 final_result = self._deep_classify(path, tier1_result)
 
-            # Step 6: Handle sensitive files
-            if final_result.is_sensitive and self.config.security.enable_encryption:
-                self._encrypt_and_vault(path, final_result)
-                self._stats['sensitive'] += 1
-                return True
+            # Note: Sensitive file detection disabled - files organized normally
+            # (Vault feature removed per user request)
 
             # Step 8: Move to organized location
             dest = self._get_destination(final_result, source_path=path)
