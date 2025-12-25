@@ -338,25 +338,44 @@ class SmartFileOrganizer:
         file_path: Path,
         result: ClassificationResult
     ) -> None:
-        """Encrypt sensitive file and move to vault.
+        """Handle sensitive file - keep in-place or move to vault.
         
         Args:
             file_path: Path to sensitive file.
             result: Classification result.
         """
-        vault_dir = self.config.organization.vault_directory
-        vault_dir.mkdir(parents=True, exist_ok=True)
-
-        # Note: In production, password should come from secure storage
-        # This is a placeholder - implement proper key management
         logger.info(f"Sensitive file detected: {file_path.name}")
-        logger.info("Moving to vault (encryption requires password setup)")
-
-        # For now, just move to vault without encryption
-        # TODO: Implement password prompt/storage
-        vault_dest = vault_dir / result.category.value
-        vault_dest.mkdir(parents=True, exist_ok=True)
-        self.file_ops.move_file(file_path, vault_dest)
+        
+        # If organize_in_place is True, keep the file in its original directory
+        # Otherwise, move to the centralized vault
+        if self.config.organization.organize_in_place:
+            # Keep in-place: create a .vault subfolder in the source directory
+            vault_dest = file_path.parent / ".vault" / result.category.value
+            vault_dest.mkdir(parents=True, exist_ok=True)
+            logger.info(f"Keeping sensitive file in-place at: {vault_dest}")
+        else:
+            vault_dir = self.config.organization.vault_directory
+            vault_dest = vault_dir / result.category.value
+            vault_dest.mkdir(parents=True, exist_ok=True)
+            logger.info("Moving to centralized vault")
+        
+        # Move the file
+        actual_dest = self.file_ops.move_file(file_path, vault_dest)
+        
+        # Record to history for undo support
+        self.history.record_move(
+            source=file_path,
+            destination=actual_dest,
+            category=result.category.value,
+            subcategory="Sensitive"
+        )
+        
+        # Send notification
+        self.notifier.notify_organized(
+            filename=file_path.name,
+            category=f"Vault/{result.category.value}",
+            destination=str(actual_dest)
+        )
 
     def _on_file_complete(self, file_path: str) -> None:
         """Callback when file processing completes.
