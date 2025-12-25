@@ -116,14 +116,38 @@ setup_service() {
     echo -e "${BLUE}Setting up systemd service...${NC}"
     
     local SERVICE_DIR="$HOME/.config/systemd/user"
-    local SERVICE_FILE="$SCRIPT_DIR/smart-file-organizer.service"
+    local SERVICE_FILE="$SERVICE_DIR/smart-file-organizer.service"
     
     # Create service directory
     mkdir -p "$SERVICE_DIR"
     
-    # Copy service file
-    cp "$SERVICE_FILE" "$SERVICE_DIR/"
-    print_step "Service file installed"
+    # Generate service file dynamically with correct paths
+    cat > "$SERVICE_FILE" << EOF
+[Unit]
+Description=Smart File Organizer - Intelligent autonomous file management
+Documentation=https://github.com/user/smart-file-organizer
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=$SCRIPT_DIR
+ExecStart=$VENV_DIR/bin/python -m src.main
+Restart=on-failure
+RestartSec=10
+
+# Environment
+Environment=PYTHONUNBUFFERED=1
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=smart-file-organizer
+
+[Install]
+WantedBy=default.target
+EOF
+    
+    print_step "Service file generated with correct paths"
     
     # Reload systemd
     systemctl --user daemon-reload
