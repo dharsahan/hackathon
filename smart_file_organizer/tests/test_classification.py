@@ -9,7 +9,6 @@ import os
 
 from src.classification.tier1_metadata import (
     Tier1Classifier,
-    ClassificationResult,
 )
 from src.classification.tier2_content import (
     Tier2ContentClassifier,

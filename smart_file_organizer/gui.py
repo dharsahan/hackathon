@@ -8,11 +8,9 @@ Uses CustomTkinter for a beautiful, modern UI.
 """
 
 import sys
-import threading
 import webbrowser
 from pathlib import Path
 from datetime import datetime
-from typing import Optional
 
 try:
     import customtkinter as ctk
@@ -25,7 +23,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.config import Config
 from src.actions.history_tracker import HistoryTracker
-from src.actions.rules_engine import RulesEngine, MatchType
+from src.actions.rules_engine import RulesEngine
 
 
 # Theme configuration
@@ -126,7 +124,7 @@ class HistoryItem(ctk.CTkFrame):
         try:
             dt = datetime.fromisoformat(entry.timestamp)
             time_str = dt.strftime("%H:%M")
-        except:
+        except (ValueError, TypeError):
             time_str = ""
         
         ctk.CTkLabel(

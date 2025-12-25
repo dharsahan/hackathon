@@ -1265,7 +1265,7 @@ DASHBOARD_HTML = '''<!DOCTYPE html>
                 const res = await fetch('/api/settings');
                 const settings = await res.json();
                 if (settings.watch_directories && settings.watch_directories.length > 0) {
-                    const match = settings.watch_directories[0].match(/^\/home\/([^/]+)/);
+                    const match = settings.watch_directories[0].match(new RegExp('^/home/([^/]+)'));
                     return match ? match[1] : 'user';
                 }
             } catch (e) {}
@@ -1365,7 +1365,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         body = self.rfile.read(content_length).decode() if content_length > 0 else '{}'
         try:
             data = json.loads(body) if body else {}
-        except:
+        except (json.JSONDecodeError, ValueError):
             data = {}
 
         if path.startswith("/api/undo/"):
@@ -1398,7 +1398,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         body = self.rfile.read(content_length).decode() if content_length > 0 else '{}'
         try:
             data = json.loads(body) if body else {}
-        except:
+        except (json.JSONDecodeError, ValueError):
             data = {}
         
         if path.startswith("/api/rules/"):
@@ -1537,7 +1537,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
             subprocess.Popen(['systemctl', '--user', 'restart', 'smart-file-organizer'],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             self._send_json({"success": True})
-        except:
+        except Exception:
             self._send_json({"error": "Failed to restart"}, 500)
 
     def _handle_undo(self, entry_id: int):

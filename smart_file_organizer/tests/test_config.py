@@ -2,7 +2,7 @@
 Unit tests for configuration module.
 """
 
-import pytest
+
 from pathlib import Path
 import tempfile
 import yaml
@@ -13,9 +13,8 @@ from src.config.settings import (
     ClassificationConfig,
     SecurityConfig,
     DeduplicationConfig,
-    OrganizationConfig,
 )
-from src.config.categories import FileCategory, CategoryMapping, CATEGORY_MAPPING
+from src.config.categories import FileCategory, CATEGORY_MAPPING
 
 
 class TestWatcherConfig:

@@ -209,7 +209,7 @@ class PDFExtractor(BaseExtractor):
                     return False
             doc.close()
             return True
-        except:
+        except Exception:
             return False
 
 

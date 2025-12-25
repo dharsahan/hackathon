@@ -196,7 +196,7 @@ class Tier3LLMClassifier:
         try:
             models = ollama.list()
             return [m.get('name', '') for m in models.get('models', [])]
-        except:
+        except Exception:
             return []
 
     def classify(

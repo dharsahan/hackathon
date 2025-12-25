@@ -2,7 +2,7 @@
 Unit tests for deduplication module.
 """
 
-import pytest
+
 from pathlib import Path
 import tempfile
 import os
@@ -11,7 +11,6 @@ from src.deduplication.hash_engine import (
     DeduplicationEngine,
     PartialHasher,
     FullHasher,
-    HashResult,
     DuplicateStatus,
 )
 

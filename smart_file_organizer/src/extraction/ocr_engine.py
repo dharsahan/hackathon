@@ -355,5 +355,5 @@ class OCREngine:
             pytesseract = _import_tesseract()
             pytesseract.get_tesseract_version()
             return True
-        except:
+        except Exception:
             return False

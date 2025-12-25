@@ -7,7 +7,7 @@ from pathlib import Path
 import tempfile
 import os
 
-from src.security.key_derivation import KeyDerivationService, DerivedKey
+from src.security.key_derivation import KeyDerivationService
 from src.security.encryption import AESEncryptor
 from src.security.secure_delete import SecureDeleter
 

@@ -223,7 +223,7 @@ class MetadataReader:
                         elif isinstance(value, bytes):
                             try:
                                 value = value.decode('utf-8', errors='replace')
-                            except:
+                            except (UnicodeDecodeError, AttributeError):
                                 value = str(value)
                         exif_data[tag_name] = value
 
