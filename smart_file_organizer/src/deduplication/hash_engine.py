@@ -150,7 +150,7 @@ class FullHasher:
     Uses buffered reading for memory efficiency with large files.
     """
 
-    BUFFER_SIZE = 65536  # 64KB buffer
+    BUFFER_SIZE = 1048576  # 1MB buffer
 
     def compute(self, file_path: Path) -> str:
         """Compute full SHA-256 hash.
