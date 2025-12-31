@@ -227,6 +227,7 @@ class DeduplicationEngine:
         self._partial_hash_index: Dict[str, List[Path]] = {}  # partial -> [paths]
         self._full_hash_index: Dict[str, Path] = {}  # full -> first path
         self._path_to_full_hash: Dict[Path, str] = {}  # path -> full_hash
+        self._path_to_partial_hash: Dict[Path, str] = {}  # path -> partial_hash
 
     def check_duplicate(self, file_path: Path) -> HashResult:
         """Check if a file is a duplicate.
@@ -254,21 +255,31 @@ class DeduplicationEngine:
         # Stage 1: Size comparison (fastest)
         if file_size not in self._size_index:
             # First file with this size - store for future comparison but defer hashing
-            # Optimization: Don't compute partial/full hash yet.
-            # We compute partial hash because it's cheap and needed for indexing
-            partial_hash = self.partial_hasher.compute(file_path)
-
             self._size_index[file_size] = [file_path]
-            self._partial_hash_index[partial_hash] = [file_path]
 
-            result.partial_hash = partial_hash
+            # Return immediately without computing any hash
             result.status = DuplicateStatus.UNIQUE
             logger.debug(f"Unique (first of size): {file_path.name}")
             return result
 
+        # Size collision: We need to check partial hashes
+        # First, ensure all existing files of this size have partial hashes computed
+        for existing_path in self._size_index[file_size]:
+            if existing_path not in self._path_to_partial_hash:
+                try:
+                    p_hash = self.partial_hasher.compute(existing_path)
+                    self._path_to_partial_hash[existing_path] = p_hash
+                    if p_hash not in self._partial_hash_index:
+                        self._partial_hash_index[p_hash] = []
+                    self._partial_hash_index[p_hash].append(existing_path)
+                except DeduplicationError:
+                    # File might have been deleted/moved since indexing
+                    continue
+
         # Stage 2: Partial hash comparison
         partial_hash = self.partial_hasher.compute(file_path)
         result.partial_hash = partial_hash
+        self._path_to_partial_hash[file_path] = partial_hash
 
         if partial_hash not in self._partial_hash_index:
             # No partial hash match - likely unique
@@ -367,6 +378,7 @@ class DeduplicationEngine:
             self._full_hash_index[full_hash] = file_path
 
         self._path_to_full_hash[file_path] = full_hash
+        self._path_to_partial_hash[file_path] = partial_hash
 
         return HashResult(
             file_path=file_path,
@@ -419,3 +431,4 @@ class DeduplicationEngine:
         self._partial_hash_index.clear()
         self._full_hash_index.clear()
         self._path_to_full_hash.clear()
+        self._path_to_partial_hash.clear()
