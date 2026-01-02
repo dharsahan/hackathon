@@ -138,19 +138,23 @@ class PartialHasher:
         Returns:
             Hexadecimal hash string.
         """
-        hasher = hashlib.sha256()
         with open(file_path, 'rb') as f:
+            if hasattr(hashlib, 'file_digest'):
+                return hashlib.file_digest(f, "sha256").hexdigest()
+
+            # Fallback for Python < 3.11
+            hasher = hashlib.sha256()
             hasher.update(f.read())
-        return hasher.hexdigest()
+            return hasher.hexdigest()
 
 
 class FullHasher:
     """Computes full SHA-256 hash of files.
     
-    Uses buffered reading for memory efficiency with large files.
+    Uses hashlib.file_digest for optimized hashing.
     """
 
-    BUFFER_SIZE = 65536  # 64KB buffer
+    BUFFER_SIZE = 65536  # Kept for compatibility if needed elsewhere
 
     def compute(self, file_path: Path) -> str:
         """Compute full SHA-256 hash.
@@ -164,17 +168,19 @@ class FullHasher:
         Raises:
             DeduplicationError: If file cannot be read.
         """
-        hasher = hashlib.sha256()
-
         try:
             with open(file_path, 'rb') as f:
+                if hasattr(hashlib, 'file_digest'):
+                    return hashlib.file_digest(f, "sha256").hexdigest()
+
+                # Fallback for Python < 3.11
+                hasher = hashlib.sha256()
                 while True:
                     data = f.read(self.BUFFER_SIZE)
                     if not data:
                         break
                     hasher.update(data)
-
-            return hasher.hexdigest()
+                return hasher.hexdigest()
 
         except OSError as e:
             raise DeduplicationError(
@@ -192,16 +198,18 @@ class FullHasher:
         Returns:
             Hexadecimal MD5 hash.
         """
-        hasher = hashlib.md5()
-
         with open(file_path, 'rb') as f:
+            if hasattr(hashlib, 'file_digest'):
+                return hashlib.file_digest(f, "md5").hexdigest()
+
+            # Fallback for Python < 3.11
+            hasher = hashlib.md5()
             while True:
                 data = f.read(self.BUFFER_SIZE)
                 if not data:
                     break
                 hasher.update(data)
-
-        return hasher.hexdigest()
+            return hasher.hexdigest()
 
 
 class DeduplicationEngine:
