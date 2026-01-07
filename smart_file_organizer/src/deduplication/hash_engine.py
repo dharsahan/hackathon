@@ -232,6 +232,7 @@ class DeduplicationEngine:
 
         # Indexes for fast lookup
         self._size_index: Dict[int, List[Path]] = {}  # size -> [paths]
+        self._unhashed_size_index: Dict[int, List[Path]] = {}  # size -> [paths] (pending partial hash)
         self._partial_hash_index: Dict[str, List[Path]] = {}  # partial -> [paths]
         self._full_hash_index: Dict[str, Path] = {}  # full -> first path
         self._path_to_partial_hash: Dict[Path, str] = {}  # path -> partial_hash
@@ -266,6 +267,7 @@ class DeduplicationEngine:
             # Optimization: Don't compute partial/full hash yet.
             # Return immediately to avoid I/O overhead for unique sizes.
             self._size_index[file_size] = [file_path]
+            self._unhashed_size_index[file_size] = [file_path]
 
             # result.partial_hash remains None
             result.status = DuplicateStatus.UNIQUE
@@ -278,9 +280,10 @@ class DeduplicationEngine:
         self._path_to_partial_hash[file_path] = partial_hash
 
         # Hydrate partial hashes for candidates if missing (Lazy Hashing)
-        candidates = self._size_index[file_size]
-        for candidate in candidates:
-            if candidate not in self._path_to_partial_hash:
+        # Optimization: Only iterate candidates that are pending partial hash
+        if file_size in self._unhashed_size_index:
+            candidates = self._unhashed_size_index[file_size]
+            for candidate in candidates:
                 try:
                     c_partial_hash = self.partial_hasher.compute(candidate)
                     self._path_to_partial_hash[candidate] = c_partial_hash
@@ -290,6 +293,8 @@ class DeduplicationEngine:
                 except DeduplicationError:
                     # If we can't read the candidate anymore, ignore it
                     continue
+            # Clear unhashed list for this size as they are all processed
+            del self._unhashed_size_index[file_size]
 
         if partial_hash not in self._partial_hash_index:
             # No partial hash match - likely unique
@@ -308,18 +313,24 @@ class DeduplicationEngine:
         self._path_to_full_hash[file_path] = full_hash
 
         # Ensure all candidates have their full hash computed
-        candidates = self._partial_hash_index[partial_hash]
-        for candidate in candidates:
-            if candidate not in self._path_to_full_hash:
-                # Lazy computation of candidate's full hash
-                try:
-                    candidate_hash = self.full_hasher.compute(candidate)
-                    self._path_to_full_hash[candidate] = candidate_hash
-                    if candidate_hash not in self._full_hash_index:
-                        self._full_hash_index[candidate_hash] = candidate
-                except DeduplicationError:
-                    # If we can't read the candidate anymore, ignore it
-                    continue
+        # Optimization: If we already have the full hash in index, we don't need to hydrate others
+        if full_hash not in self._full_hash_index:
+            candidates = self._partial_hash_index[partial_hash]
+            for candidate in candidates:
+                if candidate not in self._path_to_full_hash:
+                    # Lazy computation of candidate's full hash
+                    try:
+                        candidate_hash = self.full_hasher.compute(candidate)
+                        self._path_to_full_hash[candidate] = candidate_hash
+                        if candidate_hash not in self._full_hash_index:
+                            self._full_hash_index[candidate_hash] = candidate
+
+                        # Optimization: If found a match, we can stop hydrating
+                        if candidate_hash == full_hash:
+                            break
+                    except DeduplicationError:
+                        # If we can't read the candidate anymore, ignore it
+                        continue
 
         if full_hash in self._full_hash_index:
             original_path = self._full_hash_index[full_hash]
@@ -440,6 +451,7 @@ class DeduplicationEngine:
     def clear(self) -> None:
         """Clear all indexes."""
         self._size_index.clear()
+        self._unhashed_size_index.clear()
         self._partial_hash_index.clear()
         self._full_hash_index.clear()
         self._path_to_partial_hash.clear()
