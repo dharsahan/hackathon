@@ -232,6 +232,7 @@ class DeduplicationEngine:
 
         # Indexes for fast lookup
         self._size_index: Dict[int, List[Path]] = {}  # size -> [paths]
+        self._files_pending_partial: Dict[int, List[Path]] = {}  # size -> [paths pending partial hash]
         self._partial_hash_index: Dict[str, List[Path]] = {}  # partial -> [paths]
         self._full_hash_index: Dict[str, Path] = {}  # full -> first path
         self._path_to_partial_hash: Dict[Path, str] = {}  # path -> partial_hash
@@ -266,6 +267,7 @@ class DeduplicationEngine:
             # Optimization: Don't compute partial/full hash yet.
             # Return immediately to avoid I/O overhead for unique sizes.
             self._size_index[file_size] = [file_path]
+            self._files_pending_partial[file_size] = [file_path]
 
             # result.partial_hash remains None
             result.status = DuplicateStatus.UNIQUE
@@ -278,9 +280,12 @@ class DeduplicationEngine:
         self._path_to_partial_hash[file_path] = partial_hash
 
         # Hydrate partial hashes for candidates if missing (Lazy Hashing)
-        candidates = self._size_index[file_size]
-        for candidate in candidates:
-            if candidate not in self._path_to_partial_hash:
+        # Optimization: Only iterate candidates that haven't been partial-hashed yet.
+        # This reduces O(N^2) complexity to O(N) when adding many files of same size.
+        candidates = self._files_pending_partial.get(file_size, [])
+        if candidates:
+            for candidate in candidates:
+                # Candidates in _files_pending_partial definitely need hashing
                 try:
                     c_partial_hash = self.partial_hasher.compute(candidate)
                     self._path_to_partial_hash[candidate] = c_partial_hash
@@ -291,9 +296,14 @@ class DeduplicationEngine:
                     # If we can't read the candidate anymore, ignore it
                     continue
 
+            # Clear pending list as they are processed
+            del self._files_pending_partial[file_size]
+
         if partial_hash not in self._partial_hash_index:
             # No partial hash match - likely unique
             self._size_index[file_size].append(file_path)
+            # No need to add to pending because we just computed its partial hash
+
             if partial_hash not in self._partial_hash_index:
                 self._partial_hash_index[partial_hash] = []
             self._partial_hash_index[partial_hash].append(file_path)
@@ -440,6 +450,7 @@ class DeduplicationEngine:
     def clear(self) -> None:
         """Clear all indexes."""
         self._size_index.clear()
+        self._files_pending_partial.clear()
         self._partial_hash_index.clear()
         self._full_hash_index.clear()
         self._path_to_partial_hash.clear()
