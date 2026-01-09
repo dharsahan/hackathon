@@ -317,19 +317,32 @@ class DeduplicationEngine:
         result.full_hash = full_hash
         self._path_to_full_hash[file_path] = full_hash
 
-        # Ensure all candidates have their full hash computed
-        candidates = self._partial_hash_index[partial_hash]
-        for candidate in candidates:
-            if candidate not in self._path_to_full_hash:
-                # Lazy computation of candidate's full hash
-                try:
-                    candidate_hash = self.full_hasher.compute(candidate)
-                    self._path_to_full_hash[candidate] = candidate_hash
-                    if candidate_hash not in self._full_hash_index:
-                        self._full_hash_index[candidate_hash] = candidate
-                except DeduplicationError:
-                    # If we can't read the candidate anymore, ignore it
-                    continue
+        # Optimization: Check if we already have a valid match in the index
+        # This avoids iterating through candidates if we already know it's a duplicate
+        skip_candidates = False
+        if full_hash in self._full_hash_index:
+            original_path = self._full_hash_index[full_hash]
+            if original_path.exists() and original_path != file_path:
+                skip_candidates = True
+
+        if not skip_candidates:
+            # Ensure all candidates have their full hash computed
+            candidates = self._partial_hash_index[partial_hash]
+            for candidate in candidates:
+                if candidate not in self._path_to_full_hash:
+                    # Lazy computation of candidate's full hash
+                    try:
+                        candidate_hash = self.full_hasher.compute(candidate)
+                        self._path_to_full_hash[candidate] = candidate_hash
+                        if candidate_hash not in self._full_hash_index:
+                            self._full_hash_index[candidate_hash] = candidate
+
+                        # Optimization: If we found a match, we can stop hydrating other candidates
+                        if candidate_hash == full_hash:
+                            break
+                    except DeduplicationError:
+                        # If we can't read the candidate anymore, ignore it
+                        continue
 
         if full_hash in self._full_hash_index:
             original_path = self._full_hash_index[full_hash]
