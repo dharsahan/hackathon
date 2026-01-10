@@ -317,19 +317,23 @@ class DeduplicationEngine:
         result.full_hash = full_hash
         self._path_to_full_hash[file_path] = full_hash
 
-        # Ensure all candidates have their full hash computed
-        candidates = self._partial_hash_index[partial_hash]
-        for candidate in candidates:
-            if candidate not in self._path_to_full_hash:
-                # Lazy computation of candidate's full hash
-                try:
-                    candidate_hash = self.full_hasher.compute(candidate)
-                    self._path_to_full_hash[candidate] = candidate_hash
-                    if candidate_hash not in self._full_hash_index:
-                        self._full_hash_index[candidate_hash] = candidate
-                except DeduplicationError:
-                    # If we can't read the candidate anymore, ignore it
-                    continue
+        # Optimization: If we already know this full hash, we can skip
+        # hydrating other candidates. This avoids O(N) loop over candidates
+        # when processing duplicates of a known file.
+        if full_hash not in self._full_hash_index:
+            # Ensure all candidates have their full hash computed
+            candidates = self._partial_hash_index[partial_hash]
+            for candidate in candidates:
+                if candidate not in self._path_to_full_hash:
+                    # Lazy computation of candidate's full hash
+                    try:
+                        candidate_hash = self.full_hasher.compute(candidate)
+                        self._path_to_full_hash[candidate] = candidate_hash
+                        if candidate_hash not in self._full_hash_index:
+                            self._full_hash_index[candidate_hash] = candidate
+                    except DeduplicationError:
+                        # If we can't read the candidate anymore, ignore it
+                        continue
 
         if full_hash in self._full_hash_index:
             original_path = self._full_hash_index[full_hash]
