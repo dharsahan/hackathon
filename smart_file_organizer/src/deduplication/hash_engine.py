@@ -313,7 +313,14 @@ class DeduplicationEngine:
 
         # Stage 3: Full hash for confirmation
         # Potential duplicate found by partial hash. Now we need full hashes.
-        full_hash = self.full_hasher.compute(file_path)
+        is_small_file = file_size <= self.partial_hasher.chunk_size * 3
+        if is_small_file:
+            # For small files, partial hash IS the full hash.
+            # Reuse it to avoid re-reading the file.
+            full_hash = partial_hash
+        else:
+            full_hash = self.full_hasher.compute(file_path)
+
         result.full_hash = full_hash
         self._path_to_full_hash[file_path] = full_hash
 
@@ -323,12 +330,18 @@ class DeduplicationEngine:
             if candidate not in self._path_to_full_hash:
                 # Lazy computation of candidate's full hash
                 try:
-                    candidate_hash = self.full_hasher.compute(candidate)
+                    # Check if candidate is small (same optimization)
+                    if candidate.stat().st_size <= self.partial_hasher.chunk_size * 3:
+                        # Reuse known partial hash (which matches current partial_hash)
+                        candidate_hash = partial_hash
+                    else:
+                        candidate_hash = self.full_hasher.compute(candidate)
+
                     self._path_to_full_hash[candidate] = candidate_hash
                     if candidate_hash not in self._full_hash_index:
                         self._full_hash_index[candidate_hash] = candidate
-                except DeduplicationError:
-                    # If we can't read the candidate anymore, ignore it
+                except (DeduplicationError, OSError):
+                    # If we can't read/stat the candidate anymore, ignore it
                     continue
 
         if full_hash in self._full_hash_index:
@@ -385,7 +398,11 @@ class DeduplicationEngine:
         file_size = file_path.stat().st_size
 
         partial_hash = self.partial_hasher.compute(file_path)
-        full_hash = self.full_hasher.compute(file_path)
+
+        if file_size <= self.partial_hasher.chunk_size * 3:
+            full_hash = partial_hash
+        else:
+            full_hash = self.full_hasher.compute(file_path)
 
         # Add to indexes
         if file_size not in self._size_index:
