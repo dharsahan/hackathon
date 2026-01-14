@@ -68,6 +68,29 @@ class TestPartialHasher:
             os.unlink(f1.name)
             os.unlink(f2.name)
 
+    def test_consistency_with_full_hasher(self):
+        """Test that PartialHasher produces same hash as FullHasher for small files."""
+        chunk_size = 4096
+        partial_hasher = PartialHasher(chunk_size=chunk_size)
+        full_hasher = FullHasher()
+
+        # Test file size <= 3 * chunk_size
+        size = chunk_size * 3
+
+        with tempfile.NamedTemporaryFile(delete=False) as f:
+            f.write(os.urandom(size))
+            f.flush()
+
+            p_hash = partial_hasher.compute(Path(f.name))
+            f_hash = full_hasher.compute(Path(f.name))
+
+            # Verify the condition for optimization is met
+            assert partial_hasher.is_calculating_full_hash(size)
+            # Verify the hashes are identical
+            assert p_hash == f_hash
+
+            os.unlink(f.name)
+
 
 class TestFullHasher:
     """Tests for FullHasher."""
