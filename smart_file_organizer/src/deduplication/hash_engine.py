@@ -73,6 +73,17 @@ class PartialHasher:
         """
         self.chunk_size = chunk_size
 
+    def is_calculating_full_hash(self, file_size: int) -> bool:
+        """Check if partial hash will cover the entire file (small file).
+
+        Args:
+            file_size: Size of the file in bytes.
+
+        Returns:
+            True if file is small enough that partial hash equals full hash.
+        """
+        return file_size <= self.chunk_size * 3
+
     def compute(self, file_path: Path) -> str:
         """Compute partial hash of a file.
         
@@ -313,7 +324,12 @@ class DeduplicationEngine:
 
         # Stage 3: Full hash for confirmation
         # Potential duplicate found by partial hash. Now we need full hashes.
-        full_hash = self.full_hasher.compute(file_path)
+        if self.partial_hasher.is_calculating_full_hash(file_size):
+            # Optimization: For small files, partial hash IS the full hash
+            full_hash = partial_hash
+        else:
+            full_hash = self.full_hasher.compute(file_path)
+
         result.full_hash = full_hash
         self._path_to_full_hash[file_path] = full_hash
 
@@ -323,7 +339,13 @@ class DeduplicationEngine:
             if candidate not in self._path_to_full_hash:
                 # Lazy computation of candidate's full hash
                 try:
-                    candidate_hash = self.full_hasher.compute(candidate)
+                    candidate_size = candidate.stat().st_size
+                    if self.partial_hasher.is_calculating_full_hash(candidate_size):
+                        # Optimization: Candidate is small, reuse partial hash
+                        candidate_hash = partial_hash
+                    else:
+                        candidate_hash = self.full_hasher.compute(candidate)
+
                     self._path_to_full_hash[candidate] = candidate_hash
                     if candidate_hash not in self._full_hash_index:
                         self._full_hash_index[candidate_hash] = candidate
