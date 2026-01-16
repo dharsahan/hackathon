@@ -21,6 +21,7 @@ logger = get_logger(__name__)
 
 class DuplicateStatus(Enum):
     """Status of duplicate detection."""
+
     UNIQUE = "unique"
     EXACT_DUPLICATE = "exact_duplicate"
     LIKELY_DUPLICATE = "likely_duplicate"
@@ -30,7 +31,7 @@ class DuplicateStatus(Enum):
 @dataclass
 class HashResult:
     """Result of hash computation for a file.
-    
+
     Attributes:
         file_path: Path to the file.
         file_size: File size in bytes.
@@ -39,6 +40,7 @@ class HashResult:
         status: Duplicate detection status.
         duplicate_of: Path to original file if duplicate.
     """
+
     file_path: Path
     file_size: int
     partial_hash: Optional[str] = None
@@ -60,31 +62,42 @@ class HashResult:
 
 class PartialHasher:
     """Implements partial hashing for fast file comparison.
-    
+
     Hashes only the beginning, middle, and end of large files
     for fast initial comparison.
     """
 
     def __init__(self, chunk_size: int = 4096):
         """Initialize partial hasher.
-        
+
         Args:
             chunk_size: Size of chunks to hash in bytes.
         """
         self.chunk_size = chunk_size
 
+    def is_calculating_full_hash(self, file_size: int) -> bool:
+        """Check if partial hash calculation will actually be a full hash.
+
+        Args:
+            file_size: Size of the file in bytes.
+
+        Returns:
+            True if partial hash will be the full hash (small files).
+        """
+        return file_size <= self.chunk_size * 3
+
     def compute(self, file_path: Path) -> str:
         """Compute partial hash of a file.
-        
+
         For files smaller than 3 chunks, computes full hash.
         For larger files, hashes beginning, middle, and end.
-        
+
         Args:
             file_path: Path to the file.
-        
+
         Returns:
             Hexadecimal hash string.
-        
+
         Raises:
             DeduplicationError: If file cannot be read.
         """
@@ -92,19 +105,17 @@ class PartialHasher:
             file_size = file_path.stat().st_size
         except OSError as e:
             raise DeduplicationError(
-                f"Cannot stat file: {e}",
-                file_path=str(file_path),
-                hash_type="partial"
+                f"Cannot stat file: {e}", file_path=str(file_path), hash_type="partial"
             )
 
         # For small files, just compute full hash
-        if file_size <= self.chunk_size * 3:
+        if self.is_calculating_full_hash(file_size):
             return self._hash_full(file_path)
 
         hasher = hashlib.sha256()
 
         try:
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 # First chunk
                 hasher.update(f.read(self.chunk_size))
 
@@ -124,22 +135,20 @@ class PartialHasher:
 
         except OSError as e:
             raise DeduplicationError(
-                f"Cannot read file: {e}",
-                file_path=str(file_path),
-                hash_type="partial"
+                f"Cannot read file: {e}", file_path=str(file_path), hash_type="partial"
             )
 
     def _hash_full(self, file_path: Path) -> str:
         """Compute full hash for small files.
-        
+
         Args:
             file_path: Path to file.
-        
+
         Returns:
             Hexadecimal hash string.
         """
-        with open(file_path, 'rb') as f:
-            if hasattr(hashlib, 'file_digest'):
+        with open(file_path, "rb") as f:
+            if hasattr(hashlib, "file_digest"):
                 return hashlib.file_digest(f, "sha256").hexdigest()
 
             # Fallback for Python < 3.11
@@ -150,7 +159,7 @@ class PartialHasher:
 
 class FullHasher:
     """Computes full SHA-256 hash of files.
-    
+
     Uses hashlib.file_digest for optimized hashing.
     """
 
@@ -158,19 +167,19 @@ class FullHasher:
 
     def compute(self, file_path: Path) -> str:
         """Compute full SHA-256 hash.
-        
+
         Args:
             file_path: Path to the file.
-        
+
         Returns:
             Hexadecimal hash string.
-        
+
         Raises:
             DeduplicationError: If file cannot be read.
         """
         try:
-            with open(file_path, 'rb') as f:
-                if hasattr(hashlib, 'file_digest'):
+            with open(file_path, "rb") as f:
+                if hasattr(hashlib, "file_digest"):
                     return hashlib.file_digest(f, "sha256").hexdigest()
 
                 # Fallback for Python < 3.11
@@ -184,22 +193,20 @@ class FullHasher:
 
         except OSError as e:
             raise DeduplicationError(
-                f"Cannot read file: {e}",
-                file_path=str(file_path),
-                hash_type="full"
+                f"Cannot read file: {e}", file_path=str(file_path), hash_type="full"
             )
 
     def compute_md5(self, file_path: Path) -> str:
         """Compute MD5 hash (for compatibility).
-        
+
         Args:
             file_path: Path to the file.
-        
+
         Returns:
             Hexadecimal MD5 hash.
         """
-        with open(file_path, 'rb') as f:
-            if hasattr(hashlib, 'file_digest'):
+        with open(file_path, "rb") as f:
+            if hasattr(hashlib, "file_digest"):
                 return hashlib.file_digest(f, "md5").hexdigest()
 
             # Fallback for Python < 3.11
@@ -214,7 +221,7 @@ class FullHasher:
 
 class DeduplicationEngine:
     """Main deduplication engine.
-    
+
     Uses a multi-stage approach for efficient duplicate detection:
     1. Size comparison (fastest)
     2. Partial hash comparison
@@ -223,7 +230,7 @@ class DeduplicationEngine:
 
     def __init__(self, chunk_size: int = 4096):
         """Initialize deduplication engine.
-        
+
         Args:
             chunk_size: Chunk size for partial hashing.
         """
@@ -232,7 +239,9 @@ class DeduplicationEngine:
 
         # Indexes for fast lookup
         self._size_index: Dict[int, List[Path]] = {}  # size -> [paths]
-        self._files_pending_partial: Dict[int, List[Path]] = {}  # size -> [paths pending partial hash]
+        self._files_pending_partial: Dict[int, List[Path]] = (
+            {}
+        )  # size -> [paths pending partial hash]
         self._partial_hash_index: Dict[str, List[Path]] = {}  # partial -> [paths]
         self._full_hash_index: Dict[str, Path] = {}  # full -> first path
         self._path_to_partial_hash: Dict[Path, str] = {}  # path -> partial_hash
@@ -240,12 +249,12 @@ class DeduplicationEngine:
 
     def check_duplicate(self, file_path: Path) -> HashResult:
         """Check if a file is a duplicate.
-        
+
         Uses multi-stage hashing for efficiency.
-        
+
         Args:
             file_path: Path to check.
-        
+
         Returns:
             HashResult with duplicate status.
         """
@@ -255,8 +264,7 @@ class DeduplicationEngine:
             file_size = file_path.stat().st_size
         except OSError as e:
             raise DeduplicationError(
-                f"Cannot access file: {e}",
-                file_path=str(file_path)
+                f"Cannot access file: {e}", file_path=str(file_path)
             )
 
         result = HashResult(file_path=file_path, file_size=file_size)
@@ -275,9 +283,15 @@ class DeduplicationEngine:
             return result
 
         # Stage 2: Partial hash comparison
+        is_small_file = self.partial_hasher.is_calculating_full_hash(file_size)
         partial_hash = self.partial_hasher.compute(file_path)
         result.partial_hash = partial_hash
         self._path_to_partial_hash[file_path] = partial_hash
+
+        if is_small_file:
+            # For small files, partial hash IS the full hash
+            self._path_to_full_hash[file_path] = partial_hash
+            result.full_hash = partial_hash
 
         # Hydrate partial hashes for candidates if missing (Lazy Hashing)
         # Optimization: Only iterate candidates that haven't been partial-hashed yet.
@@ -289,6 +303,13 @@ class DeduplicationEngine:
                 try:
                     c_partial_hash = self.partial_hasher.compute(candidate)
                     self._path_to_partial_hash[candidate] = c_partial_hash
+
+                    if is_small_file:
+                        # Optimization: Reuse partial hash as full hash for small files
+                        self._path_to_full_hash[candidate] = c_partial_hash
+                        if c_partial_hash not in self._full_hash_index:
+                            self._full_hash_index[c_partial_hash] = candidate
+
                     if c_partial_hash not in self._partial_hash_index:
                         self._partial_hash_index[c_partial_hash] = []
                     self._partial_hash_index[c_partial_hash].append(candidate)
@@ -313,7 +334,12 @@ class DeduplicationEngine:
 
         # Stage 3: Full hash for confirmation
         # Potential duplicate found by partial hash. Now we need full hashes.
-        full_hash = self.full_hasher.compute(file_path)
+        if is_small_file:
+            # Optimization: We already computed full hash (as partial hash)
+            full_hash = partial_hash
+        else:
+            full_hash = self.full_hasher.compute(file_path)
+
         result.full_hash = full_hash
         self._path_to_full_hash[file_path] = full_hash
 
@@ -323,7 +349,12 @@ class DeduplicationEngine:
             if candidate not in self._path_to_full_hash:
                 # Lazy computation of candidate's full hash
                 try:
-                    candidate_hash = self.full_hasher.compute(candidate)
+                    if is_small_file:
+                        # For small files, partial hash IS full hash
+                        candidate_hash = partial_hash
+                    else:
+                        candidate_hash = self.full_hasher.compute(candidate)
+
                     self._path_to_full_hash[candidate] = candidate_hash
                     if candidate_hash not in self._full_hash_index:
                         self._full_hash_index[candidate_hash] = candidate
@@ -372,12 +403,12 @@ class DeduplicationEngine:
 
     def add_to_index(self, file_path: Path) -> HashResult:
         """Add a file to the index without checking for duplicates.
-        
+
         Use this when indexing existing organized files.
-        
+
         Args:
             file_path: Path to add.
-        
+
         Returns:
             HashResult with computed hashes.
         """
@@ -385,7 +416,11 @@ class DeduplicationEngine:
         file_size = file_path.stat().st_size
 
         partial_hash = self.partial_hasher.compute(file_path)
-        full_hash = self.full_hasher.compute(file_path)
+
+        if self.partial_hasher.is_calculating_full_hash(file_size):
+            full_hash = partial_hash
+        else:
+            full_hash = self.full_hasher.compute(file_path)
 
         # Add to indexes
         if file_size not in self._size_index:
@@ -407,21 +442,21 @@ class DeduplicationEngine:
             file_size=file_size,
             partial_hash=partial_hash,
             full_hash=full_hash,
-            status=DuplicateStatus.UNIQUE
+            status=DuplicateStatus.UNIQUE,
         )
 
     def find_duplicates_in_directory(self, directory: Path) -> Dict[str, List[Path]]:
         """Find all duplicates in a directory.
-        
+
         Args:
             directory: Directory to scan.
-        
+
         Returns:
             Dictionary mapping full hash to list of duplicate paths.
         """
         duplicates: Dict[str, List[Path]] = {}
 
-        for file_path in directory.rglob('*'):
+        for file_path in directory.rglob("*"):
             if file_path.is_file():
                 result = self.check_duplicate(file_path)
 
@@ -436,7 +471,7 @@ class DeduplicationEngine:
 
     def get_stats(self) -> dict:
         """Get deduplication statistics.
-        
+
         Returns:
             Dictionary with index statistics.
         """
