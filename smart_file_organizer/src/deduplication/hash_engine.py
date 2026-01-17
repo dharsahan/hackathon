@@ -299,6 +299,14 @@ class DeduplicationEngine:
             # Clear pending list as they are processed
             del self._files_pending_partial[file_size]
 
+        # Optimization: If file is small, partial_hash IS full_hash
+        # This avoids re-reading and re-hashing the file in Stage 3
+        is_small_file = file_size <= self.partial_hasher.chunk_size * 3
+        if is_small_file:
+            result.full_hash = partial_hash
+            # We don't populate self._path_to_full_hash here yet,
+            # we'll do it if we need to confirm duplicates or add to index
+
         if partial_hash not in self._partial_hash_index:
             # No partial hash match - likely unique
             self._size_index[file_size].append(file_path)
@@ -313,8 +321,12 @@ class DeduplicationEngine:
 
         # Stage 3: Full hash for confirmation
         # Potential duplicate found by partial hash. Now we need full hashes.
-        full_hash = self.full_hasher.compute(file_path)
-        result.full_hash = full_hash
+        if result.full_hash:
+            full_hash = result.full_hash
+        else:
+            full_hash = self.full_hasher.compute(file_path)
+            result.full_hash = full_hash
+
         self._path_to_full_hash[file_path] = full_hash
 
         # Ensure all candidates have their full hash computed
