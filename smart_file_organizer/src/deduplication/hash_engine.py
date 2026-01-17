@@ -320,6 +320,7 @@ class DeduplicationEngine:
         # Ensure all candidates have their full hash computed
         candidates = self._partial_hash_index[partial_hash]
         for candidate in candidates:
+            candidate_hash = None
             if candidate not in self._path_to_full_hash:
                 # Lazy computation of candidate's full hash
                 try:
@@ -330,6 +331,13 @@ class DeduplicationEngine:
                 except DeduplicationError:
                     # If we can't read the candidate anymore, ignore it
                     continue
+            else:
+                candidate_hash = self._path_to_full_hash[candidate]
+
+            # Optimization: If we found a match, we can stop hydrating/checking other candidates
+            # This drastically improves performance when many duplicates exist
+            if candidate_hash == full_hash:
+                break
 
         if full_hash in self._full_hash_index:
             original_path = self._full_hash_index[full_hash]
