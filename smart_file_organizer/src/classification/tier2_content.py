@@ -20,7 +20,7 @@ logger = get_logger(__name__)
 @dataclass
 class ContentPattern:
     """Pattern for content-based classification.
-    
+
     Attributes:
         patterns: List of regex patterns to match.
         category: Category to assign if matched.
@@ -28,6 +28,7 @@ class ContentPattern:
         sensitivity_boost: Extra sensitivity score if matched.
         confidence: Confidence score for this pattern.
     """
+
     patterns: List[str]
     category: str
     subcategory: str
@@ -40,54 +41,54 @@ class PatternMatcher:
 
     # Financial document patterns
     FINANCIAL_PATTERNS = [
-        r'\b(?:invoice|bill|receipt|payment|transaction)\b',
-        r'\$[\d,]+\.?\d*',
-        r'\b(?:bank|account|balance|credit|debit)\b',
-        r'\b(?:tax|IRS|W-2|1099|salary|income)\b',
-        r'\b(?:mortgage|loan|interest rate|principal)\b',
+        r"\b(?:invoice|bill|receipt|payment|transaction)\b",
+        r"\$[\d,]+\.?\d*",
+        r"\b(?:bank|account|balance|credit|debit)\b",
+        r"\b(?:tax|IRS|W-2|1099|salary|income)\b",
+        r"\b(?:mortgage|loan|interest rate|principal)\b",
     ]
 
     # Medical document patterns
     MEDICAL_PATTERNS = [
-        r'\b(?:patient|diagnosis|prescription|medication)\b',
-        r'\b(?:doctor|physician|hospital|clinic|medical)\b',
-        r'\b(?:treatment|therapy|symptoms|health)\b',
-        r'\b(?:insurance claim|copay|deductible)\b',
-        r'\b(?:blood pressure|heart rate|BMI|cholesterol)\b',
+        r"\b(?:patient|diagnosis|prescription|medication)\b",
+        r"\b(?:doctor|physician|hospital|clinic|medical)\b",
+        r"\b(?:treatment|therapy|symptoms|health)\b",
+        r"\b(?:insurance claim|copay|deductible)\b",
+        r"\b(?:blood pressure|heart rate|BMI|cholesterol)\b",
     ]
 
     # Legal document patterns
     LEGAL_PATTERNS = [
-        r'\b(?:contract|agreement|terms|conditions)\b',
-        r'\b(?:party|parties|herein|whereas|hereby)\b',
-        r'\b(?:court|legal|attorney|lawyer|law firm)\b',
-        r'\b(?:plaintiff|defendant|lawsuit|litigation)\b',
-        r'\b(?:notarized|affidavit|deposition)\b',
+        r"\b(?:contract|agreement|terms|conditions)\b",
+        r"\b(?:party|parties|herein|whereas|hereby)\b",
+        r"\b(?:court|legal|attorney|lawyer|law firm)\b",
+        r"\b(?:plaintiff|defendant|lawsuit|litigation)\b",
+        r"\b(?:notarized|affidavit|deposition)\b",
     ]
 
     # Receipt patterns
     RECEIPT_PATTERNS = [
-        r'\b(?:receipt|order|purchase|item|qty|quantity)\b',
-        r'\b(?:subtotal|total|tax|tip|gratuity)\b',
-        r'\b(?:visa|mastercard|amex|payment method)\b',
-        r'\b(?:thank you for your purchase)\b',
-        r'\bitem\s+\d+\b',
+        r"\b(?:receipt|order|purchase|item|qty|quantity)\b",
+        r"\b(?:subtotal|total|tax|tip|gratuity)\b",
+        r"\b(?:visa|mastercard|amex|payment method)\b",
+        r"\b(?:thank you for your purchase)\b",
+        r"\bitem\s+\d+\b",
     ]
 
     # Invoice patterns
     INVOICE_PATTERNS = [
-        r'\b(?:invoice|inv|bill to|ship to)\b',
-        r'\binvoice\s*(?:#|number|no\.?)\s*\d+',
-        r'\b(?:due date|payment due|net 30|net 60)\b',
-        r'\b(?:amount due|balance due|please pay)\b',
+        r"\b(?:invoice|inv|bill to|ship to)\b",
+        r"\binvoice\s*(?:#|number|no\.?)\s*\d+",
+        r"\b(?:due date|payment due|net 30|net 60)\b",
+        r"\b(?:amount due|balance due|please pay)\b",
     ]
 
     # Personal ID patterns
     PERSONAL_ID_PATTERNS = [
-        r'\b\d{3}-\d{2}-\d{4}\b',  # SSN format
-        r'\b(?:social security|SSN)\b',
-        r'\b(?:passport|driver.?s? license|ID card)\b',
-        r'\b(?:date of birth|DOB)\b',
+        r"\b\d{3}-\d{2}-\d{4}\b",  # SSN format
+        r"\b(?:social security|SSN)\b",
+        r"\b(?:passport|driver.?s? license|ID card)\b",
+        r"\b(?:date of birth|DOB)\b",
     ]
 
     def __init__(self):
@@ -134,18 +135,15 @@ class PatternMatcher:
         # Compile all patterns
         self._compiled_patterns = {}
         for pattern_set in self.pattern_sets:
-            compiled = [
-                re.compile(p, re.IGNORECASE)
-                for p in pattern_set.patterns
-            ]
+            compiled = [re.compile(p, re.IGNORECASE) for p in pattern_set.patterns]
             self._compiled_patterns[pattern_set.category] = compiled
 
     def match(self, text: str) -> List[Tuple[ContentPattern, int]]:
         """Match text against all pattern sets.
-        
+
         Args:
             text: Text content to analyze.
-        
+
         Returns:
             List of (ContentPattern, match_count) tuples, sorted by match count.
         """
@@ -167,7 +165,7 @@ class PatternMatcher:
 
 class Tier2ContentClassifier:
     """Tier 2 - Content-based classifier using pattern matching.
-    
+
     Analyzes document content to determine category and sensitivity.
     """
 
@@ -179,16 +177,14 @@ class Tier2ContentClassifier:
         self.pattern_matcher = PatternMatcher()
 
     def classify(
-        self,
-        text: str,
-        tier1_result: Optional[ClassificationResult] = None
+        self, text: str, tier1_result: Optional[ClassificationResult] = None
     ) -> ClassificationResult:
         """Classify based on text content.
-        
+
         Args:
             text: Text content to analyze.
             tier1_result: Optional Tier 1 result to enhance.
-        
+
         Returns:
             Enhanced ClassificationResult.
         """
@@ -242,14 +238,10 @@ class Tier2ContentClassifier:
                 "pattern_matches": match_count,
                 "sensitivity_score": best_pattern.sensitivity_boost,
                 "all_matches": [
-                    {
-                        "category": p.category,
-                        "subcategory": p.subcategory,
-                        "matches": c
-                    }
+                    {"category": p.category, "subcategory": p.subcategory, "matches": c}
                     for p, c in matches[:3]
-                ]
-            }
+                ],
+            },
         )
 
         logger.debug(
@@ -261,10 +253,10 @@ class Tier2ContentClassifier:
 
     def detect_sensitivity(self, text: str) -> Tuple[bool, float, List[str]]:
         """Detect if text contains sensitive information.
-        
+
         Args:
             text: Text to analyze.
-        
+
         Returns:
             Tuple of (is_sensitive, sensitivity_score, detected_types).
         """

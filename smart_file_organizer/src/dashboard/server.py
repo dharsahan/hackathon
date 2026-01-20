@@ -19,7 +19,7 @@ logger = get_logger(__name__)
 
 
 # HTML template for the dashboard
-DASHBOARD_HTML = '''<!DOCTYPE html>
+DASHBOARD_HTML = """<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1319,9 +1319,7 @@ DASHBOARD_HTML = '''<!DOCTYPE html>
     </script>
 </body>
 </html>
-'''
-
-
+"""
 
 
 class DashboardHandler(BaseHTTPRequestHandler):
@@ -1344,7 +1342,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         elif path == "/api/stats":
             self._serve_stats()
         elif path == "/api/history":
-            limit = int(query.get('limit', [20])[0])
+            limit = int(query.get("limit", [20])[0])
             self._serve_history(limit)
         elif path == "/api/rules":
             self._serve_rules()
@@ -1361,8 +1359,8 @@ class DashboardHandler(BaseHTTPRequestHandler):
         path = parsed.path
 
         # Read body if present
-        content_length = int(self.headers.get('Content-Length', 0))
-        body = self.rfile.read(content_length).decode() if content_length > 0 else '{}'
+        content_length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_length).decode() if content_length > 0 else "{}"
         try:
             data = json.loads(body) if body else {}
         except (json.JSONDecodeError, ValueError):
@@ -1375,15 +1373,15 @@ class DashboardHandler(BaseHTTPRequestHandler):
             self._add_rule(data)
         elif path.startswith("/api/rules/") and path.endswith("/toggle"):
             rule_id = int(path.split("/")[-2])
-            self._toggle_rule(rule_id, data.get('enabled', True))
+            self._toggle_rule(rule_id, data.get("enabled", True))
         elif path == "/api/restore":
-            self._restore_file(data.get('path', ''))
+            self._restore_file(data.get("path", ""))
         elif path == "/api/restart":
             self._restart_service()
         elif path == "/api/settings":
             self._update_settings(data)
         elif path == "/api/settings/folders":
-            self._add_watch_folder(data.get('path', ''))
+            self._add_watch_folder(data.get("path", ""))
         elif path == "/api/history/clear":
             self._clear_history()
         else:
@@ -1394,18 +1392,18 @@ class DashboardHandler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         path = parsed.path
 
-        content_length = int(self.headers.get('Content-Length', 0))
-        body = self.rfile.read(content_length).decode() if content_length > 0 else '{}'
+        content_length = int(self.headers.get("Content-Length", 0))
+        body = self.rfile.read(content_length).decode() if content_length > 0 else "{}"
         try:
             data = json.loads(body) if body else {}
         except (json.JSONDecodeError, ValueError):
             data = {}
-        
+
         if path.startswith("/api/rules/"):
             rule_id = int(path.split("/")[-1])
             self._delete_rule(rule_id)
         elif path == "/api/settings/folders":
-            self._remove_watch_folder(data.get('path', ''))
+            self._remove_watch_folder(data.get("path", ""))
         else:
             self._send_404()
 
@@ -1435,7 +1433,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _serve_stats(self):
         """Serve statistics API."""
-        if self.organizer and hasattr(self.organizer, 'history'):
+        if self.organizer and hasattr(self.organizer, "history"):
             stats = self.organizer.history.get_stats()
             self._send_json(stats)
         else:
@@ -1443,7 +1441,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _serve_history(self, limit: int = 20):
         """Serve history API."""
-        if self.organizer and hasattr(self.organizer, 'history'):
+        if self.organizer and hasattr(self.organizer, "history"):
             entries = self.organizer.history.get_recent(limit)
             data = [entry.to_dict() for entry in entries]
             self._send_json(data)
@@ -1452,7 +1450,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _serve_rules(self):
         """Serve rules API."""
-        if self.organizer and hasattr(self.organizer, 'rules_engine'):
+        if self.organizer and hasattr(self.organizer, "rules_engine"):
             rules = self.organizer.rules_engine.get_rules()
             data = [rule.to_dict() for rule in rules]
             self._send_json(data)
@@ -1462,23 +1460,32 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def _serve_quarantine(self):
         """Serve quarantine files API."""
         try:
-            if self.organizer and hasattr(self.organizer, 'config'):
-                quarantine_dir = Path(self.organizer.config.organization.base_directory) / ".quarantine"
+            if self.organizer and hasattr(self.organizer, "config"):
+                quarantine_dir = (
+                    Path(self.organizer.config.organization.base_directory)
+                    / ".quarantine"
+                )
                 files = []
 
                 if quarantine_dir.exists():
                     # Scan duplicate and sensitive subdirs
-                    for subdir in ['duplicate', 'sensitive']:
+                    for subdir in ["duplicate", "sensitive"]:
                         sub_path = quarantine_dir / subdir
                         if sub_path.exists():
                             for f in sub_path.iterdir():
                                 if f.is_file():
-                                    files.append({
-                                        'name': f.name,
-                                        'path': str(f),
-                                        'size': f.stat().st_size,
-                                        'reason': 'Duplicate' if subdir == 'duplicate' else 'Sensitive'
-                                    })
+                                    files.append(
+                                        {
+                                            "name": f.name,
+                                            "path": str(f),
+                                            "size": f.stat().st_size,
+                                            "reason": (
+                                                "Duplicate"
+                                                if subdir == "duplicate"
+                                                else "Sensitive"
+                                            ),
+                                        }
+                                    )
 
                 self._send_json(files)
             else:
@@ -1488,13 +1495,13 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _add_rule(self, data: dict):
         """Add a new rule."""
-        if self.organizer and hasattr(self.organizer, 'rules_engine'):
+        if self.organizer and hasattr(self.organizer, "rules_engine"):
             self.organizer.rules_engine.add_rule(
-                name=data.get('name', 'Custom Rule'),
-                pattern=data.get('pattern', ''),
-                category=data.get('category', 'Documents'),
-                subcategory=data.get('subcategory', ''),
-                priority=data.get('priority', 50)
+                name=data.get("name", "Custom Rule"),
+                pattern=data.get("pattern", ""),
+                category=data.get("category", "Documents"),
+                subcategory=data.get("subcategory", ""),
+                priority=data.get("priority", 50),
             )
             self._send_json({"success": True})
         else:
@@ -1502,7 +1509,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _toggle_rule(self, rule_id: int, enabled: bool):
         """Toggle a rule."""
-        if self.organizer and hasattr(self.organizer, 'rules_engine'):
+        if self.organizer and hasattr(self.organizer, "rules_engine"):
             self.organizer.rules_engine.enable_rule(rule_id, enabled)
             self._send_json({"success": True})
         else:
@@ -1510,7 +1517,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
 
     def _delete_rule(self, rule_id: int):
         """Delete a rule."""
-        if self.organizer and hasattr(self.organizer, 'rules_engine'):
+        if self.organizer and hasattr(self.organizer, "rules_engine"):
             self.organizer.rules_engine.remove_rule(rule_id)
             self._send_json({"success": True})
         else:
@@ -1520,7 +1527,7 @@ class DashboardHandler(BaseHTTPRequestHandler):
         """Restore a file from quarantine."""
         try:
             src = Path(path)
-            if src.exists() and '.quarantine' in str(src):
+            if src.exists() and ".quarantine" in str(src):
                 # Move back to Downloads
                 dest = Path.home() / "Downloads" / src.name
                 src.rename(dest)
@@ -1533,16 +1540,20 @@ class DashboardHandler(BaseHTTPRequestHandler):
     def _restart_service(self):
         """Restart the systemd service."""
         import subprocess
+
         try:
-            subprocess.Popen(['systemctl', '--user', 'restart', 'smart-file-organizer'],
-                           stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.Popen(
+                ["systemctl", "--user", "restart", "smart-file-organizer"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
             self._send_json({"success": True})
         except Exception:
             self._send_json({"error": "Failed to restart"}, 500)
 
     def _handle_undo(self, entry_id: int):
         """Handle undo request."""
-        if self.organizer and hasattr(self.organizer, 'history'):
+        if self.organizer and hasattr(self.organizer, "history"):
             result = self.organizer.history.undo_by_id(entry_id)
             if result:
                 self._send_json({"success": True})
@@ -1550,126 +1561,138 @@ class DashboardHandler(BaseHTTPRequestHandler):
                 self._send_json({"success": False}, 400)
         else:
             self._send_json({"error": "Organizer not available"}, 500)
-    
+
     def _serve_settings(self):
         """Serve current settings."""
         try:
             config_path = Path(__file__).parent.parent.parent / "config.yaml"
             import yaml
-            
-            with open(config_path, 'r') as f:
+
+            with open(config_path, "r") as f:
                 config = yaml.safe_load(f) or {}
-            
-            watcher = config.get('watcher', {})
-            org = config.get('organization', {})
-            classification = config.get('classification', {})
-            dedup = config.get('deduplication', {})
-            
+
+            watcher = config.get("watcher", {})
+            org = config.get("organization", {})
+            classification = config.get("classification", {})
+            dedup = config.get("deduplication", {})
+
             settings = {
-                'watch_directories': watcher.get('watch_directories', []),
-                'base_directory': org.get('base_directory', str(Path.home() / 'Organized')),
-                'organize_in_place': org.get('organize_in_place', False),
-                'use_date_folders': org.get('use_date_folders', True),
-                'llm_model': classification.get('llm_model', 'gemma3:270m'),
-                'ocr_enabled': classification.get('ocr_enabled', True),
-                'dedup_enabled': dedup.get('enabled', True),
-                'duplicate_action': dedup.get('duplicate_action', 'quarantine'),
+                "watch_directories": watcher.get("watch_directories", []),
+                "base_directory": org.get(
+                    "base_directory", str(Path.home() / "Organized")
+                ),
+                "organize_in_place": org.get("organize_in_place", False),
+                "use_date_folders": org.get("use_date_folders", True),
+                "llm_model": classification.get("llm_model", "gemma3:270m"),
+                "ocr_enabled": classification.get("ocr_enabled", True),
+                "dedup_enabled": dedup.get("enabled", True),
+                "duplicate_action": dedup.get("duplicate_action", "quarantine"),
             }
-            
+
             self._send_json(settings)
         except Exception as e:
             self._send_json({"error": str(e)}, 500)
-    
+
     def _update_settings(self, data: dict):
         """Update settings in config.yaml."""
         try:
             config_path = Path(__file__).parent.parent.parent / "config.yaml"
             import yaml
-            
-            with open(config_path, 'r') as f:
+
+            with open(config_path, "r") as f:
                 config = yaml.safe_load(f) or {}
-            
+
             # Apply updates
-            if 'organize_in_place' in data:
-                config.setdefault('organization', {})['organize_in_place'] = data['organize_in_place']
-            if 'use_date_folders' in data:
-                config.setdefault('organization', {})['use_date_folders'] = data['use_date_folders']
-            if 'ocr_enabled' in data:
-                config.setdefault('classification', {})['ocr_enabled'] = data['ocr_enabled']
-            if 'dedup_enabled' in data:
-                config.setdefault('deduplication', {})['enabled'] = data['dedup_enabled']
-            if 'duplicate_action' in data:
-                config.setdefault('deduplication', {})['duplicate_action'] = data['duplicate_action']
-            
-            with open(config_path, 'w') as f:
+            if "organize_in_place" in data:
+                config.setdefault("organization", {})["organize_in_place"] = data[
+                    "organize_in_place"
+                ]
+            if "use_date_folders" in data:
+                config.setdefault("organization", {})["use_date_folders"] = data[
+                    "use_date_folders"
+                ]
+            if "ocr_enabled" in data:
+                config.setdefault("classification", {})["ocr_enabled"] = data[
+                    "ocr_enabled"
+                ]
+            if "dedup_enabled" in data:
+                config.setdefault("deduplication", {})["enabled"] = data[
+                    "dedup_enabled"
+                ]
+            if "duplicate_action" in data:
+                config.setdefault("deduplication", {})["duplicate_action"] = data[
+                    "duplicate_action"
+                ]
+
+            with open(config_path, "w") as f:
                 yaml.dump(config, f, default_flow_style=False)
-            
+
             self._send_json({"success": True})
         except Exception as e:
             self._send_json({"error": str(e)}, 500)
-    
+
     def _add_watch_folder(self, path: str):
         """Add a new watch folder."""
         try:
             if not path:
                 self._send_json({"error": "Path is required"}, 400)
                 return
-            
+
             # Expand ~ to home directory
-            if path.startswith('~'):
+            if path.startswith("~"):
                 path = str(Path.home() / path[2:])
-            
+
             # Validate path exists
             folder = Path(path)
             if not folder.exists():
                 folder.mkdir(parents=True, exist_ok=True)
-            
+
             config_path = Path(__file__).parent.parent.parent / "config.yaml"
             import yaml
-            
-            with open(config_path, 'r') as f:
+
+            with open(config_path, "r") as f:
                 config = yaml.safe_load(f) or {}
-            
-            dirs = config.setdefault('watcher', {}).setdefault('watch_directories', [])
+
+            dirs = config.setdefault("watcher", {}).setdefault("watch_directories", [])
             if path not in dirs:
                 dirs.append(path)
-            
-            with open(config_path, 'w') as f:
+
+            with open(config_path, "w") as f:
                 yaml.dump(config, f, default_flow_style=False)
-            
+
             self._send_json({"success": True, "path": path})
         except Exception as e:
             self._send_json({"error": str(e)}, 500)
-    
+
     def _remove_watch_folder(self, path: str):
         """Remove a watch folder."""
         try:
             if not path:
                 self._send_json({"error": "Path is required"}, 400)
                 return
-            
+
             config_path = Path(__file__).parent.parent.parent / "config.yaml"
             import yaml
-            
-            with open(config_path, 'r') as f:
+
+            with open(config_path, "r") as f:
                 config = yaml.safe_load(f) or {}
-            
-            dirs = config.get('watcher', {}).get('watch_directories', [])
+
+            dirs = config.get("watcher", {}).get("watch_directories", [])
             if path in dirs:
                 dirs.remove(path)
-                config['watcher']['watch_directories'] = dirs
-            
-            with open(config_path, 'w') as f:
+                config["watcher"]["watch_directories"] = dirs
+
+            with open(config_path, "w") as f:
                 yaml.dump(config, f, default_flow_style=False)
-            
+
             self._send_json({"success": True})
         except Exception as e:
             self._send_json({"error": str(e)}, 500)
-    
+
     def _clear_history(self):
         """Clear all history."""
         try:
-            if self.organizer and hasattr(self.organizer, 'history'):
+            if self.organizer and hasattr(self.organizer, "history"):
                 self.organizer.history.clear_history()
             self._send_json({"success": True})
         except Exception as e:
@@ -1681,7 +1704,7 @@ class DashboardServer:
 
     def __init__(self, organizer, host: str = "127.0.0.1", port: int = 8080):
         """Initialize the dashboard server.
-        
+
         Args:
             organizer: SmartFileOrganizer instance.
             host: Host to bind to.
@@ -1706,9 +1729,7 @@ class DashboardServer:
         self._running = True
 
         self._thread = threading.Thread(
-            target=self._serve,
-            daemon=True,
-            name="DashboardServer"
+            target=self._serve, daemon=True, name="DashboardServer"
         )
         self._thread.start()
 
@@ -1728,7 +1749,7 @@ class DashboardServer:
         self._running = False
         # Don't call shutdown() - it can deadlock
         # The timeout in _serve() will handle the exit
-        
+
         logger.info("Dashboard stopped")
 
     @property

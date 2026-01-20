@@ -25,6 +25,7 @@ def _import_send2trash():
     if send2trash is None:
         try:
             import send2trash as _send2trash
+
             send2trash = _send2trash
         except ImportError:
             send2trash = False
@@ -33,7 +34,7 @@ def _import_send2trash():
 
 class SecureDeleter:
     """Secure file deletion with multiple overwrite passes.
-    
+
     Implements multi-pass overwriting before deletion to make
     data recovery more difficult.
     """
@@ -43,7 +44,7 @@ class SecureDeleter:
 
     def __init__(self, passes: int = 3, use_trash: bool = False):
         """Initialize secure deleter.
-        
+
         Args:
             passes: Number of overwrite passes (1-7).
             use_trash: Move to trash instead of permanent delete.
@@ -53,16 +54,16 @@ class SecureDeleter:
 
     def secure_delete(self, file_path: Path) -> bool:
         """Securely delete a file.
-        
+
         Overwrites the file with random data multiple times
         before deleting.
-        
+
         Args:
             file_path: Path to file to delete.
-        
+
         Returns:
             True if deletion successful.
-        
+
         Raises:
             EncryptionError: If deletion fails.
         """
@@ -77,7 +78,7 @@ class SecureDeleter:
                 "Path is not a file",
                 file_path=str(file_path),
                 operation="secure_delete",
-                error_code=ErrorCode.SECURE_DELETE_FAILED
+                error_code=ErrorCode.SECURE_DELETE_FAILED,
             )
 
         try:
@@ -94,8 +95,7 @@ class SecureDeleter:
                 file_path.unlink()
 
             logger.info(
-                f"Securely deleted: {file_path.name} "
-                f"({self.passes} passes)"
+                f"Securely deleted: {file_path.name} " f"({self.passes} passes)"
             )
             return True
 
@@ -104,23 +104,18 @@ class SecureDeleter:
                 f"Secure deletion failed: {e}",
                 file_path=str(file_path),
                 operation="secure_delete",
-                error_code=ErrorCode.SECURE_DELETE_FAILED
+                error_code=ErrorCode.SECURE_DELETE_FAILED,
             )
 
-    def _overwrite_pass(
-        self,
-        file_path: Path,
-        file_size: int,
-        pass_num: int
-    ) -> None:
+    def _overwrite_pass(self, file_path: Path, file_size: int, pass_num: int) -> None:
         """Perform a single overwrite pass.
-        
+
         Args:
             file_path: Path to file.
             file_size: Size of file in bytes.
             pass_num: Current pass number.
         """
-        with open(file_path, 'r+b') as f:
+        with open(file_path, "r+b") as f:
             # Different patterns for different passes
             if pass_num % 3 == 0:
                 # Random data
@@ -131,7 +126,7 @@ class SecureDeleter:
                     bytes_written += chunk_size
             elif pass_num % 3 == 1:
                 # All zeros
-                zeros = b'\x00' * self.BUFFER_SIZE
+                zeros = b"\x00" * self.BUFFER_SIZE
                 bytes_written = 0
                 while bytes_written < file_size:
                     chunk_size = min(self.BUFFER_SIZE, file_size - bytes_written)
@@ -139,7 +134,7 @@ class SecureDeleter:
                     bytes_written += chunk_size
             else:
                 # All ones
-                ones = b'\xFF' * self.BUFFER_SIZE
+                ones = b"\xff" * self.BUFFER_SIZE
                 bytes_written = 0
                 while bytes_written < file_size:
                     chunk_size = min(self.BUFFER_SIZE, file_size - bytes_written)
@@ -152,10 +147,10 @@ class SecureDeleter:
 
     def _move_to_trash(self, file_path: Path) -> bool:
         """Move file to system trash.
-        
+
         Args:
             file_path: Path to file.
-        
+
         Returns:
             True if successful.
         """
@@ -169,17 +164,13 @@ class SecureDeleter:
             file_path.unlink()
             return True
 
-    def secure_delete_directory(
-        self,
-        dir_path: Path,
-        recursive: bool = True
-    ) -> int:
+    def secure_delete_directory(self, dir_path: Path, recursive: bool = True) -> int:
         """Securely delete all files in a directory.
-        
+
         Args:
             dir_path: Path to directory.
             recursive: Include subdirectories.
-        
+
         Returns:
             Number of files deleted.
         """
@@ -190,16 +181,14 @@ class SecureDeleter:
                 "Path is not a directory",
                 file_path=str(dir_path),
                 operation="secure_delete_directory",
-                error_code=ErrorCode.SECURE_DELETE_FAILED
+                error_code=ErrorCode.SECURE_DELETE_FAILED,
             )
 
-        pattern = '**/*' if recursive else '*'
+        pattern = "**/*" if recursive else "*"
         deleted_count = 0
 
         for file_path in sorted(
-            dir_path.glob(pattern),
-            key=lambda p: len(str(p)),
-            reverse=True
+            dir_path.glob(pattern), key=lambda p: len(str(p)), reverse=True
         ):
             if file_path.is_file():
                 try:
@@ -210,9 +199,7 @@ class SecureDeleter:
 
         # Remove empty directories
         for file_path in sorted(
-            dir_path.glob(pattern),
-            key=lambda p: len(str(p)),
-            reverse=True
+            dir_path.glob(pattern), key=lambda p: len(str(p)), reverse=True
         ):
             if file_path.is_dir():
                 try:
@@ -231,12 +218,12 @@ class SecureDeleter:
 
     def quick_delete(self, file_path: Path) -> bool:
         """Quick delete with single overwrite pass.
-        
+
         Faster than secure_delete but less thorough.
-        
+
         Args:
             file_path: Path to file.
-        
+
         Returns:
             True if successful.
         """

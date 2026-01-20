@@ -19,35 +19,34 @@ logger = get_logger(__name__)
 
 class FileOperations:
     """Safe file operations with conflict handling.
-    
+
     Provides atomic move/copy operations with automatic
     conflict resolution.
     """
 
     def __init__(self, base_directory: Optional[Path] = None):
         """Initialize file operations.
-        
+
         Args:
             base_directory: Base directory for organized files.
         """
-        self.base_directory = Path(base_directory) if base_directory else Path.home() / "Organized"
+        self.base_directory = (
+            Path(base_directory) if base_directory else Path.home() / "Organized"
+        )
 
     def move_file(
-        self,
-        source: Path,
-        dest_dir: Path,
-        new_name: Optional[str] = None
+        self, source: Path, dest_dir: Path, new_name: Optional[str] = None
     ) -> Path:
         """Move a file to destination directory.
-        
+
         Args:
             source: Source file path.
             dest_dir: Destination directory.
             new_name: Optional new filename.
-        
+
         Returns:
             Final path of moved file.
-        
+
         Raises:
             FileProcessingError: If move fails.
         """
@@ -58,7 +57,7 @@ class FileOperations:
             raise FileProcessingError(
                 "Source file does not exist",
                 file_path=str(source),
-                error_code=ErrorCode.FILE_NOT_FOUND
+                error_code=ErrorCode.FILE_NOT_FOUND,
             )
 
         # Create destination directory
@@ -80,22 +79,19 @@ class FileOperations:
             raise FileProcessingError(
                 f"Failed to move file: {e}",
                 file_path=str(source),
-                error_code=ErrorCode.PROCESSING_FAILED
+                error_code=ErrorCode.PROCESSING_FAILED,
             )
 
     def copy_file(
-        self,
-        source: Path,
-        dest_dir: Path,
-        new_name: Optional[str] = None
+        self, source: Path, dest_dir: Path, new_name: Optional[str] = None
     ) -> Path:
         """Copy a file to destination directory.
-        
+
         Args:
             source: Source file path.
             dest_dir: Destination directory.
             new_name: Optional new filename.
-        
+
         Returns:
             Path of copied file.
         """
@@ -106,7 +102,7 @@ class FileOperations:
             raise FileProcessingError(
                 "Source file does not exist",
                 file_path=str(source),
-                error_code=ErrorCode.FILE_NOT_FOUND
+                error_code=ErrorCode.FILE_NOT_FOUND,
             )
 
         dest_dir.mkdir(parents=True, exist_ok=True)
@@ -124,20 +120,16 @@ class FileOperations:
             raise FileProcessingError(
                 f"Failed to copy file: {e}",
                 file_path=str(source),
-                error_code=ErrorCode.PROCESSING_FAILED
+                error_code=ErrorCode.PROCESSING_FAILED,
             )
 
-    def rename_file(
-        self,
-        file_path: Path,
-        new_name: str
-    ) -> Path:
+    def rename_file(self, file_path: Path, new_name: str) -> Path:
         """Rename a file.
-        
+
         Args:
             file_path: Path to file.
             new_name: New filename.
-        
+
         Returns:
             New file path.
         """
@@ -155,15 +147,15 @@ class FileOperations:
             raise FileProcessingError(
                 f"Failed to rename file: {e}",
                 file_path=str(file_path),
-                error_code=ErrorCode.PROCESSING_FAILED
+                error_code=ErrorCode.PROCESSING_FAILED,
             )
 
     def _resolve_conflict(self, dest_path: Path) -> Path:
         """Resolve filename conflict by appending counter.
-        
+
         Args:
             dest_path: Desired destination path.
-        
+
         Returns:
             Available path (may have counter suffix).
         """
@@ -185,22 +177,19 @@ class FileOperations:
                 raise FileProcessingError(
                     "Too many files with same name",
                     file_path=str(dest_path),
-                    error_code=ErrorCode.PROCESSING_FAILED
+                    error_code=ErrorCode.PROCESSING_FAILED,
                 )
 
     def create_date_path(
-        self,
-        base_dir: Path,
-        date: Optional[datetime] = None,
-        format_str: str = "%Y/%m"
+        self, base_dir: Path, date: Optional[datetime] = None, format_str: str = "%Y/%m"
     ) -> Path:
         """Create date-based subdirectory structure.
-        
+
         Args:
             base_dir: Base directory.
             date: Date to use (default: now).
             format_str: strftime format for path.
-        
+
         Returns:
             Path with date subdirectories.
         """
@@ -214,18 +203,15 @@ class FileOperations:
         return full_path
 
     def get_destination_path(
-        self,
-        category: str,
-        subcategory: Optional[str] = None,
-        use_date: bool = True
+        self, category: str, subcategory: Optional[str] = None, use_date: bool = True
     ) -> Path:
         """Get organized destination path.
-        
+
         Args:
             category: Main category name.
             subcategory: Optional subcategory.
             use_date: Include date folders.
-        
+
         Returns:
             Full destination path.
         """
@@ -241,17 +227,13 @@ class FileOperations:
 
         return dest
 
-    def quarantine_file(
-        self,
-        file_path: Path,
-        reason: str = "duplicate"
-    ) -> Path:
+    def quarantine_file(self, file_path: Path, reason: str = "duplicate") -> Path:
         """Move file to quarantine directory.
-        
+
         Args:
             file_path: File to quarantine.
             reason: Reason for quarantine.
-        
+
         Returns:
             Path in quarantine.
         """
@@ -260,10 +242,10 @@ class FileOperations:
 
     def is_safe_path(self, file_path: Path) -> bool:
         """Check if path is safe to operate on.
-        
+
         Args:
             file_path: Path to check.
-        
+
         Returns:
             True if path is safe.
         """

@@ -28,6 +28,7 @@ def _import_imagehash():
         try:
             import imagehash as _imagehash
             from PIL import Image as _Image
+
             imagehash = _imagehash
             Image = _Image
         except ImportError:
@@ -38,6 +39,7 @@ def _import_imagehash():
 
 class HashType(Enum):
     """Types of perceptual hashes."""
+
     PHASH = "phash"  # Perceptual hash (DCT-based)
     DHASH = "dhash"  # Difference hash
     AHASH = "ahash"  # Average hash
@@ -47,7 +49,7 @@ class HashType(Enum):
 @dataclass
 class PerceptualHashResult:
     """Result of perceptual hash computation.
-    
+
     Attributes:
         file_path: Path to the image.
         hash_value: Computed hash as hex string.
@@ -55,6 +57,7 @@ class PerceptualHashResult:
         similar_files: List of (path, distance) for similar images.
         is_duplicate: Whether this is a near-duplicate.
     """
+
     file_path: Path
     hash_value: str
     hash_type: HashType = HashType.PHASH
@@ -68,8 +71,7 @@ class PerceptualHashResult:
             "hash_value": self.hash_value,
             "hash_type": self.hash_type.value,
             "similar_files": [
-                {"path": str(p), "distance": d}
-                for p, d in self.similar_files
+                {"path": str(p), "distance": d} for p, d in self.similar_files
             ],
             "is_duplicate": self.is_duplicate,
         }
@@ -77,25 +79,31 @@ class PerceptualHashResult:
 
 class PerceptualHashEngine:
     """Perceptual hashing engine for image similarity.
-    
+
     Uses perceptual hashes to find visually similar images,
     even if they have been resized, compressed, or slightly modified.
     """
 
     # Supported image extensions
     SUPPORTED_EXTENSIONS = {
-        '.jpg', '.jpeg', '.png', '.gif', '.bmp',
-        '.webp', '.tiff', '.tif'
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".bmp",
+        ".webp",
+        ".tiff",
+        ".tif",
     }
 
     def __init__(
         self,
         threshold: int = 5,
         hash_size: int = 8,
-        hash_type: HashType = HashType.PHASH
+        hash_type: HashType = HashType.PHASH,
     ):
         """Initialize perceptual hash engine.
-        
+
         Args:
             threshold: Maximum Hamming distance for similarity (0-64).
                        Lower = stricter matching.
@@ -111,10 +119,10 @@ class PerceptualHashEngine:
 
     def is_supported(self, file_path: Path) -> bool:
         """Check if file is a supported image format.
-        
+
         Args:
             file_path: Path to check.
-        
+
         Returns:
             True if file is a supported image.
         """
@@ -122,13 +130,13 @@ class PerceptualHashEngine:
 
     def compute_hash(self, image_path: Path) -> str:
         """Compute perceptual hash of an image.
-        
+
         Args:
             image_path: Path to the image.
-        
+
         Returns:
             Hash as hexadecimal string.
-        
+
         Raises:
             DeduplicationError: If image cannot be processed.
         """
@@ -138,7 +146,7 @@ class PerceptualHashEngine:
             raise DeduplicationError(
                 "imagehash library not available",
                 file_path=str(image_path),
-                hash_type="perceptual"
+                hash_type="perceptual",
             )
 
         try:
@@ -163,15 +171,15 @@ class PerceptualHashEngine:
             raise DeduplicationError(
                 f"Failed to compute perceptual hash: {e}",
                 file_path=str(image_path),
-                hash_type="perceptual"
+                hash_type="perceptual",
             )
 
     def find_similar(self, image_path: Path) -> PerceptualHashResult:
         """Find similar images in the index.
-        
+
         Args:
             image_path: Path to the image to check.
-        
+
         Returns:
             PerceptualHashResult with similar images.
         """
@@ -180,9 +188,7 @@ class PerceptualHashEngine:
         if not imagehash_lib or imagehash_lib is False:
             logger.warning("imagehash not available, skipping perceptual hashing")
             return PerceptualHashResult(
-                file_path=image_path,
-                hash_value="",
-                is_duplicate=False
+                file_path=image_path, hash_value="", is_duplicate=False
             )
 
         # Compute hash for input image
@@ -212,7 +218,7 @@ class PerceptualHashEngine:
             hash_value=current_hash_str,
             hash_type=self.hash_type,
             similar_files=similar,
-            is_duplicate=is_duplicate
+            is_duplicate=is_duplicate,
         )
 
         if similar:
@@ -225,10 +231,10 @@ class PerceptualHashEngine:
 
     def add_to_index(self, image_path: Path) -> str:
         """Add image to index without checking for duplicates.
-        
+
         Args:
             image_path: Path to image.
-        
+
         Returns:
             Computed hash.
         """
@@ -236,17 +242,13 @@ class PerceptualHashEngine:
         self._hash_index[image_path] = hash_value
         return hash_value
 
-    def compare_images(
-        self,
-        image1: Path,
-        image2: Path
-    ) -> Tuple[int, bool]:
+    def compare_images(self, image1: Path, image2: Path) -> Tuple[int, bool]:
         """Compare two images for similarity.
-        
+
         Args:
             image1: First image path.
             image2: Second image path.
-        
+
         Returns:
             Tuple of (distance, is_similar).
         """
@@ -263,21 +265,18 @@ class PerceptualHashEngine:
 
         return distance, is_similar
 
-    def find_duplicates_in_directory(
-        self,
-        directory: Path
-    ) -> Dict[str, List[Path]]:
+    def find_duplicates_in_directory(self, directory: Path) -> Dict[str, List[Path]]:
         """Find all similar images in a directory.
-        
+
         Args:
             directory: Directory to scan.
-        
+
         Returns:
             Dictionary mapping hash to list of similar image paths.
         """
         duplicates: Dict[str, List[Path]] = {}
 
-        for file_path in directory.rglob('*'):
+        for file_path in directory.rglob("*"):
             if file_path.is_file() and self.is_supported(file_path):
                 try:
                     result = self.find_similar(file_path)
@@ -297,7 +296,7 @@ class PerceptualHashEngine:
 
     def get_stats(self) -> dict:
         """Get engine statistics.
-        
+
         Returns:
             Dictionary with index statistics.
         """

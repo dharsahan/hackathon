@@ -21,7 +21,7 @@ logger = get_logger(__name__)
 @dataclass
 class HistoryEntry:
     """Record of a single file operation.
-    
+
     Attributes:
         id: Unique identifier for this entry.
         timestamp: When the operation occurred.
@@ -33,6 +33,7 @@ class HistoryEntry:
         file_size: Size of file in bytes.
         can_undo: Whether this operation can be undone.
     """
+
     id: int
     timestamp: str
     operation: str
@@ -48,14 +49,14 @@ class HistoryEntry:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'HistoryEntry':
+    def from_dict(cls, data: dict) -> "HistoryEntry":
         """Create from dictionary."""
         return cls(**data)
 
 
 class HistoryTracker:
     """Tracks file operations and provides undo functionality.
-    
+
     Persists history to a JSON file for durability across sessions.
     """
 
@@ -63,18 +64,18 @@ class HistoryTracker:
     MAX_HISTORY_SIZE = 1000  # Maximum entries to keep
 
     def __init__(
-        self,
-        history_file: Optional[Path] = None,
-        base_directory: Optional[Path] = None
+        self, history_file: Optional[Path] = None, base_directory: Optional[Path] = None
     ):
         """Initialize history tracker.
-        
+
         Args:
             history_file: Path to history JSON file.
             base_directory: Base directory for organized files.
         """
         self.base_directory = base_directory or Path.home() / "Organized"
-        self.history_file = history_file or self.base_directory / self.DEFAULT_HISTORY_FILE
+        self.history_file = (
+            history_file or self.base_directory / self.DEFAULT_HISTORY_FILE
+        )
         self._history: List[HistoryEntry] = []
         self._next_id = 1
         self._load_history()
@@ -83,13 +84,13 @@ class HistoryTracker:
         """Load history from file."""
         if self.history_file.exists():
             try:
-                with open(self.history_file, 'r') as f:
+                with open(self.history_file, "r") as f:
                     data = json.load(f)
                     self._history = [
                         HistoryEntry.from_dict(entry)
-                        for entry in data.get('entries', [])
+                        for entry in data.get("entries", [])
                     ]
-                    self._next_id = data.get('next_id', 1)
+                    self._next_id = data.get("next_id", 1)
                 logger.debug(f"Loaded {len(self._history)} history entries")
             except (json.JSONDecodeError, KeyError) as e:
                 logger.warning(f"Error loading history: {e}")
@@ -101,31 +102,27 @@ class HistoryTracker:
 
         # Trim history if too large
         if len(self._history) > self.MAX_HISTORY_SIZE:
-            self._history = self._history[-self.MAX_HISTORY_SIZE:]
+            self._history = self._history[-self.MAX_HISTORY_SIZE :]
 
         data = {
-            'next_id': self._next_id,
-            'entries': [entry.to_dict() for entry in self._history]
+            "next_id": self._next_id,
+            "entries": [entry.to_dict() for entry in self._history],
         }
 
-        with open(self.history_file, 'w') as f:
+        with open(self.history_file, "w") as f:
             json.dump(data, f, indent=2)
 
     def record_move(
-        self,
-        source: Path,
-        destination: Path,
-        category: str = "",
-        subcategory: str = ""
+        self, source: Path, destination: Path, category: str = "", subcategory: str = ""
     ) -> HistoryEntry:
         """Record a file move operation.
-        
+
         Args:
             source: Original file path.
             destination: New file path.
             category: Classification category.
             subcategory: Classification subcategory.
-        
+
         Returns:
             The created history entry.
         """
@@ -143,7 +140,7 @@ class HistoryTracker:
             category=category,
             subcategory=subcategory,
             file_size=file_size,
-            can_undo=True
+            can_undo=True,
         )
 
         self._next_id += 1
@@ -155,7 +152,7 @@ class HistoryTracker:
 
     def undo_last(self) -> Optional[HistoryEntry]:
         """Undo the most recent undoable operation.
-        
+
         Returns:
             The undone entry, or None if nothing to undo.
         """
@@ -170,10 +167,10 @@ class HistoryTracker:
 
     def undo_by_id(self, entry_id: int) -> Optional[HistoryEntry]:
         """Undo a specific operation by ID.
-        
+
         Args:
             entry_id: ID of the entry to undo.
-        
+
         Returns:
             The undone entry, or None if not found.
         """
@@ -186,11 +183,11 @@ class HistoryTracker:
 
     def _undo_entry(self, entry: HistoryEntry, index: int) -> HistoryEntry:
         """Perform the undo operation.
-        
+
         Args:
             entry: The entry to undo.
             index: Index in history list.
-        
+
         Returns:
             The undone entry.
         """
@@ -216,36 +213,32 @@ class HistoryTracker:
 
     def get_recent(self, count: int = 10) -> List[HistoryEntry]:
         """Get recent history entries.
-        
+
         Args:
             count: Number of entries to return.
-        
+
         Returns:
             List of recent entries (newest first).
         """
         return list(reversed(self._history[-count:]))
 
-    def get_by_date(
-        self,
-        date: datetime
-    ) -> List[HistoryEntry]:
+    def get_by_date(self, date: datetime) -> List[HistoryEntry]:
         """Get history entries for a specific date.
-        
+
         Args:
             date: Date to filter by.
-        
+
         Returns:
             List of entries from that date.
         """
         date_str = date.strftime("%Y-%m-%d")
         return [
-            entry for entry in self._history
-            if entry.timestamp.startswith(date_str)
+            entry for entry in self._history if entry.timestamp.startswith(date_str)
         ]
 
     def get_stats(self) -> Dict:
         """Get history statistics.
-        
+
         Returns:
             Dictionary with stats.
         """
@@ -270,16 +263,17 @@ class HistoryTracker:
 
     def search(self, query: str) -> List[HistoryEntry]:
         """Search history by filename.
-        
+
         Args:
             query: Search term.
-        
+
         Returns:
             Matching entries.
         """
         query_lower = query.lower()
         return [
-            entry for entry in self._history
+            entry
+            for entry in self._history
             if query_lower in Path(entry.source_path).name.lower()
             or query_lower in Path(entry.dest_path).name.lower()
         ]

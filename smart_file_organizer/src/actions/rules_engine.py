@@ -22,19 +22,20 @@ logger = get_logger(__name__)
 
 class MatchType(Enum):
     """Types of pattern matching."""
-    CONTAINS = "contains"        # Filename contains text
+
+    CONTAINS = "contains"  # Filename contains text
     STARTS_WITH = "starts_with"  # Filename starts with text
-    ENDS_WITH = "ends_with"      # Filename ends with text
-    REGEX = "regex"              # Regular expression match
-    EXTENSION = "extension"      # File extension match
-    SIZE_GT = "size_gt"          # Size greater than (bytes)
-    SIZE_LT = "size_lt"          # Size less than (bytes)
+    ENDS_WITH = "ends_with"  # Filename ends with text
+    REGEX = "regex"  # Regular expression match
+    EXTENSION = "extension"  # File extension match
+    SIZE_GT = "size_gt"  # Size greater than (bytes)
+    SIZE_LT = "size_lt"  # Size less than (bytes)
 
 
 @dataclass
 class CustomRule:
     """A custom file organization rule.
-    
+
     Attributes:
         id: Unique identifier.
         name: Human-readable rule name.
@@ -47,6 +48,7 @@ class CustomRule:
         is_sensitive: Mark as sensitive.
         destination_folder: Custom destination folder (overrides category).
     """
+
     id: int
     name: str
     enabled: bool = True
@@ -61,22 +63,22 @@ class CustomRule:
     def to_dict(self) -> dict:
         """Convert to dictionary."""
         data = asdict(self)
-        data['match_type'] = self.match_type.value
+        data["match_type"] = self.match_type.value
         return data
 
     @classmethod
-    def from_dict(cls, data: dict) -> 'CustomRule':
+    def from_dict(cls, data: dict) -> "CustomRule":
         """Create from dictionary."""
         data = data.copy()
-        data['match_type'] = MatchType(data.get('match_type', 'contains'))
+        data["match_type"] = MatchType(data.get("match_type", "contains"))
         return cls(**data)
 
     def matches(self, file_path: Path) -> bool:
         """Check if a file matches this rule.
-        
+
         Args:
             file_path: Path to check.
-        
+
         Returns:
             True if file matches rule.
         """
@@ -100,8 +102,8 @@ class CustomRule:
                 return bool(re.search(self.pattern, filename, re.IGNORECASE))
 
             elif self.match_type == MatchType.EXTENSION:
-                ext = file_path.suffix.lower().lstrip('.')
-                return ext == pattern_lower.lstrip('.')
+                ext = file_path.suffix.lower().lstrip(".")
+                return ext == pattern_lower.lstrip(".")
 
             elif self.match_type == MatchType.SIZE_GT:
                 return file_path.stat().st_size > int(self.pattern)
@@ -118,19 +120,17 @@ class CustomRule:
 
 class RulesEngine:
     """Engine for evaluating custom file organization rules.
-    
+
     Rules are stored in a JSON file and evaluated in priority order.
     """
 
     DEFAULT_RULES_FILE = "custom_rules.json"
 
     def __init__(
-        self,
-        rules_file: Optional[Path] = None,
-        base_directory: Optional[Path] = None
+        self, rules_file: Optional[Path] = None, base_directory: Optional[Path] = None
     ):
         """Initialize rules engine.
-        
+
         Args:
             rules_file: Path to rules JSON file.
             base_directory: Base directory for config.
@@ -149,13 +149,12 @@ class RulesEngine:
         """Load rules from file."""
         if self.rules_file.exists():
             try:
-                with open(self.rules_file, 'r') as f:
+                with open(self.rules_file, "r") as f:
                     data = json.load(f)
                     self._rules = [
-                        CustomRule.from_dict(rule)
-                        for rule in data.get('rules', [])
+                        CustomRule.from_dict(rule) for rule in data.get("rules", [])
                     ]
-                    self._next_id = data.get('next_id', 1)
+                    self._next_id = data.get("next_id", 1)
                 logger.debug(f"Loaded {len(self._rules)} custom rules")
             except (json.JSONDecodeError, KeyError) as e:
                 logger.warning(f"Error loading rules: {e}")
@@ -166,11 +165,11 @@ class RulesEngine:
         self.rules_file.parent.mkdir(parents=True, exist_ok=True)
 
         data = {
-            'next_id': self._next_id,
-            'rules': [rule.to_dict() for rule in self._rules]
+            "next_id": self._next_id,
+            "rules": [rule.to_dict() for rule in self._rules],
         }
 
-        with open(self.rules_file, 'w') as f:
+        with open(self.rules_file, "w") as f:
             json.dump(data, f, indent=2)
 
     def _add_default_rules(self) -> None:
@@ -183,7 +182,7 @@ class RulesEngine:
                 match_type=MatchType.CONTAINS,
                 category="Documents",
                 subcategory="Finance/Invoices",
-                priority=80
+                priority=80,
             ),
             CustomRule(
                 id=self._next_id + 1,
@@ -192,7 +191,7 @@ class RulesEngine:
                 match_type=MatchType.CONTAINS,
                 category="Documents",
                 subcategory="Finance/Receipts",
-                priority=80
+                priority=80,
             ),
             CustomRule(
                 id=self._next_id + 2,
@@ -201,7 +200,7 @@ class RulesEngine:
                 match_type=MatchType.CONTAINS,
                 category="Images",
                 subcategory="Screenshots",
-                priority=70
+                priority=70,
             ),
             CustomRule(
                 id=self._next_id + 3,
@@ -211,7 +210,7 @@ class RulesEngine:
                 category="Documents",
                 subcategory="Personal/Resume",
                 is_sensitive=True,
-                priority=90
+                priority=90,
             ),
             CustomRule(
                 id=self._next_id + 4,
@@ -221,7 +220,7 @@ class RulesEngine:
                 category="Documents",
                 subcategory="Finance/Tax",
                 is_sensitive=True,
-                priority=95
+                priority=95,
             ),
         ]
 
@@ -232,21 +231,17 @@ class RulesEngine:
 
     def evaluate(self, file_path: Path) -> Optional[ClassificationResult]:
         """Evaluate a file against all rules.
-        
+
         Args:
             file_path: Path to file.
-        
+
         Returns:
             ClassificationResult if a rule matches, None otherwise.
         """
         file_path = Path(file_path)
 
         # Sort by priority (highest first)
-        sorted_rules = sorted(
-            self._rules,
-            key=lambda r: r.priority,
-            reverse=True
-        )
+        sorted_rules = sorted(self._rules, key=lambda r: r.priority, reverse=True)
 
         for rule in sorted_rules:
             if rule.matches(file_path):
@@ -254,16 +249,21 @@ class RulesEngine:
 
                 return ClassificationResult(
                     category=FileCategory.DOCUMENTS,  # Default, will use subcategory
-                    subcategory=f"{rule.category}/{rule.subcategory}" if rule.subcategory else rule.category,
+                    subcategory=(
+                        f"{rule.category}/{rule.subcategory}"
+                        if rule.subcategory
+                        else rule.category
+                    ),
                     confidence=1.0,
                     classification_tier=0,  # Custom rule (before tier 1)
                     is_sensitive=rule.is_sensitive,
                     needs_deeper_analysis=False,
                     metadata={
-                        'matched_rule': rule.name,
-                        'rule_id': rule.id,
+                        "matched_rule": rule.name,
+                        "rule_id": rule.id,
                     },
-                    suggested_folder=rule.destination_folder or f"{rule.category}/{rule.subcategory or 'General'}"
+                    suggested_folder=rule.destination_folder
+                    or f"{rule.category}/{rule.subcategory or 'General'}",
                 )
 
         return None
@@ -276,10 +276,10 @@ class RulesEngine:
         subcategory: str = "",
         match_type: MatchType = MatchType.CONTAINS,
         priority: int = 50,
-        is_sensitive: bool = False
+        is_sensitive: bool = False,
     ) -> CustomRule:
         """Add a new custom rule.
-        
+
         Args:
             name: Human-readable name.
             pattern: Pattern to match.
@@ -288,7 +288,7 @@ class RulesEngine:
             match_type: Type of matching.
             priority: Rule priority (1-100).
             is_sensitive: Mark as sensitive.
-        
+
         Returns:
             The created rule.
         """
@@ -300,7 +300,7 @@ class RulesEngine:
             subcategory=subcategory,
             match_type=match_type,
             priority=priority,
-            is_sensitive=is_sensitive
+            is_sensitive=is_sensitive,
         )
 
         self._next_id += 1
@@ -312,10 +312,10 @@ class RulesEngine:
 
     def remove_rule(self, rule_id: int) -> bool:
         """Remove a rule by ID.
-        
+
         Args:
             rule_id: ID of rule to remove.
-        
+
         Returns:
             True if removed.
         """
@@ -329,11 +329,11 @@ class RulesEngine:
 
     def enable_rule(self, rule_id: int, enabled: bool = True) -> bool:
         """Enable or disable a rule.
-        
+
         Args:
             rule_id: ID of rule.
             enabled: Whether to enable.
-        
+
         Returns:
             True if found and updated.
         """
@@ -346,7 +346,7 @@ class RulesEngine:
 
     def get_rules(self) -> List[CustomRule]:
         """Get all rules.
-        
+
         Returns:
             List of all rules.
         """
@@ -354,10 +354,10 @@ class RulesEngine:
 
     def get_rule(self, rule_id: int) -> Optional[CustomRule]:
         """Get a rule by ID.
-        
+
         Args:
             rule_id: ID to find.
-        
+
         Returns:
             The rule or None.
         """
@@ -368,11 +368,11 @@ class RulesEngine:
 
     def update_rule(self, rule_id: int, **kwargs) -> Optional[CustomRule]:
         """Update a rule's properties.
-        
+
         Args:
             rule_id: ID of rule to update.
             **kwargs: Properties to update.
-        
+
         Returns:
             Updated rule or None.
         """

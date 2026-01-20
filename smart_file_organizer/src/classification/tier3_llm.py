@@ -27,6 +27,7 @@ def _import_ollama():
     if ollama is None:
         try:
             import ollama as _ollama
+
             ollama = _ollama
         except ImportError:
             ollama = False
@@ -36,7 +37,7 @@ def _import_ollama():
 @dataclass
 class LLMResponse:
     """Response from LLM classification.
-    
+
     Attributes:
         category: Classified category.
         subcategory: More specific subcategory.
@@ -47,6 +48,7 @@ class LLMResponse:
         keywords: Extracted keywords.
         suggested_name: Suggested descriptive filename.
     """
+
     category: str
     subcategory: Optional[str] = None
     summary: Optional[str] = None
@@ -122,7 +124,7 @@ Respond with only JSON: {{"category": "category_name", "is_sensitive": true/fals
 
 class Tier3LLMClassifier:
     """Tier 3 - LLM-based semantic classifier.
-    
+
     Uses local Ollama models for accurate document classification.
     Falls back gracefully if LLM is unavailable.
     """
@@ -145,10 +147,10 @@ class Tier3LLMClassifier:
         model: str = "llama3",
         max_text_length: int = 2000,
         temperature: float = 0.1,
-        timeout: int = 30
+        timeout: int = 30,
     ):
         """Initialize LLM classifier.
-        
+
         Args:
             model: Ollama model name.
             max_text_length: Maximum text length to send to LLM.
@@ -163,7 +165,7 @@ class Tier3LLMClassifier:
 
     def is_available(self) -> bool:
         """Check if LLM is available.
-        
+
         Returns:
             True if Ollama is running and model is available.
         """
@@ -173,7 +175,7 @@ class Tier3LLMClassifier:
 
         try:
             models = ollama.list()
-            model_names = [m.get('name', '') for m in models.get('models', [])]
+            model_names = [m.get("name", "") for m in models.get("models", [])]
             # Check if our model or a variant is available
             return any(
                 self.model in name or name.startswith(self.model)
@@ -185,7 +187,7 @@ class Tier3LLMClassifier:
 
     def list_models(self) -> List[str]:
         """List available Ollama models.
-        
+
         Returns:
             List of available model names.
         """
@@ -195,21 +197,19 @@ class Tier3LLMClassifier:
 
         try:
             models = ollama.list()
-            return [m.get('name', '') for m in models.get('models', [])]
+            return [m.get("name", "") for m in models.get("models", [])]
         except Exception:
             return []
 
     def classify(
-        self,
-        text: str,
-        use_simple_prompt: bool = False
+        self, text: str, use_simple_prompt: bool = False
     ) -> Optional[LLMResponse]:
         """Classify document using LLM.
-        
+
         Args:
             text: Document text to classify.
             use_simple_prompt: Use simpler prompt for faster classification.
-        
+
         Returns:
             LLMResponse if successful, None if failed.
         """
@@ -219,7 +219,7 @@ class Tier3LLMClassifier:
             return None
 
         # Truncate text to max length
-        truncated = text[:self.max_text_length]
+        truncated = text[: self.max_text_length]
         if len(text) > self.max_text_length:
             truncated += "\n[...text truncated...]"
 
@@ -233,16 +233,16 @@ class Tier3LLMClassifier:
             response = ollama.chat(
                 model=self.model,
                 messages=[
-                    {'role': 'system', 'content': self.templates.SYSTEM_PROMPT},
-                    {'role': 'user', 'content': prompt}
+                    {"role": "system", "content": self.templates.SYSTEM_PROMPT},
+                    {"role": "user", "content": prompt},
                 ],
                 options={
-                    'temperature': self.temperature,
-                    'num_predict': 512,
-                }
+                    "temperature": self.temperature,
+                    "num_predict": 512,
+                },
             )
 
-            content = response['message']['content']
+            content = response["message"]["content"]
             return self._parse_response(content)
 
         except Exception as e:
@@ -251,10 +251,10 @@ class Tier3LLMClassifier:
 
     def _parse_response(self, response_text: str) -> Optional[LLMResponse]:
         """Parse LLM response into structured format.
-        
+
         Args:
             response_text: Raw LLM response.
-        
+
         Returns:
             LLMResponse if parsing succeeded.
         """
@@ -267,7 +267,7 @@ class Tier3LLMClassifier:
             pass
 
         # Try to extract JSON from response
-        json_match = re.search(r'\{[^{}]*\}', response_text, re.DOTALL)
+        json_match = re.search(r"\{[^{}]*\}", response_text, re.DOTALL)
         if json_match:
             try:
                 data = json.loads(json_match.group())
@@ -276,11 +276,7 @@ class Tier3LLMClassifier:
                 pass
 
         # Try to extract nested JSON (handles escaped content)
-        json_match = re.search(
-            r'\{(?:[^{}]|\{[^{}]*\})*\}',
-            response_text,
-            re.DOTALL
-        )
+        json_match = re.search(r"\{(?:[^{}]|\{[^{}]*\})*\}", response_text, re.DOTALL)
         if json_match:
             try:
                 data = json.loads(json_match.group())
@@ -293,35 +289,33 @@ class Tier3LLMClassifier:
 
     def _create_response(self, data: dict) -> LLMResponse:
         """Create LLMResponse from parsed data.
-        
+
         Args:
             data: Parsed JSON data.
-        
+
         Returns:
             LLMResponse object.
         """
         return LLMResponse(
-            category=data.get('category', 'Other'),
-            subcategory=data.get('subcategory'),
-            summary=data.get('summary'),
-            document_date=data.get('document_date'),
-            is_sensitive=bool(data.get('is_sensitive', False)),
-            confidence=float(data.get('confidence', 0.8)),
-            keywords=data.get('keywords', []),
-            suggested_name=data.get('suggested_name'),
+            category=data.get("category", "Other"),
+            subcategory=data.get("subcategory"),
+            summary=data.get("summary"),
+            document_date=data.get("document_date"),
+            is_sensitive=bool(data.get("is_sensitive", False)),
+            confidence=float(data.get("confidence", 0.8)),
+            keywords=data.get("keywords", []),
+            suggested_name=data.get("suggested_name"),
         )
 
     def classify_with_result(
-        self,
-        text: str,
-        tier1_result: Optional[ClassificationResult] = None
+        self, text: str, tier1_result: Optional[ClassificationResult] = None
     ) -> ClassificationResult:
         """Classify and return as ClassificationResult.
-        
+
         Args:
             text: Document text.
             tier1_result: Optional previous tier result.
-        
+
         Returns:
             ClassificationResult with LLM classification.
         """
@@ -330,20 +324,19 @@ class Tier3LLMClassifier:
         if not llm_response:
             if tier1_result:
                 tier1_result.classification_tier = 3
-                tier1_result.metadata['llm_failed'] = True
+                tier1_result.metadata["llm_failed"] = True
                 return tier1_result
             return ClassificationResult(
                 category=FileCategory.DOCUMENTS,
                 subcategory="Unknown",
                 classification_tier=3,
                 confidence=0.5,
-                metadata={'llm_failed': True}
+                metadata={"llm_failed": True},
             )
 
         # Map LLM category to FileCategory
         category = self.LLM_TO_CATEGORY.get(
-            llm_response.category.lower(),
-            FileCategory.DOCUMENTS
+            llm_response.category.lower(), FileCategory.DOCUMENTS
         )
 
         return ClassificationResult(
@@ -354,10 +347,10 @@ class Tier3LLMClassifier:
             is_sensitive=llm_response.is_sensitive,
             needs_deeper_analysis=False,
             metadata={
-                'llm_summary': llm_response.summary,
-                'document_date': llm_response.document_date,
-                'keywords': llm_response.keywords,
-                'suggested_name': llm_response.suggested_name,
+                "llm_summary": llm_response.summary,
+                "document_date": llm_response.document_date,
+                "keywords": llm_response.keywords,
+                "suggested_name": llm_response.suggested_name,
             },
-            suggested_folder=f"Documents/{llm_response.category}/{llm_response.subcategory or 'General'}"
+            suggested_folder=f"Documents/{llm_response.category}/{llm_response.subcategory or 'General'}",
         )

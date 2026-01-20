@@ -22,6 +22,7 @@ logger = get_logger(__name__)
 
 class ProcessingStatus(Enum):
     """Status of a processing task."""
+
     PENDING = "pending"
     PROCESSING = "processing"
     COMPLETED = "completed"
@@ -33,7 +34,7 @@ class ProcessingStatus(Enum):
 @dataclass
 class ProcessingTask:
     """Represents a file processing task.
-    
+
     Attributes:
         file_path: Path to the file to process.
         status: Current processing status.
@@ -44,6 +45,7 @@ class ProcessingTask:
         completed_at: When processing completed.
         error: Error message if failed.
     """
+
     file_path: str
     status: ProcessingStatus = ProcessingStatus.PENDING
     retry_count: int = 0
@@ -65,7 +67,7 @@ class ProcessingTask:
 
     def mark_failed(self, error: str) -> None:
         """Mark task as failed.
-        
+
         Args:
             error: Error message or description.
         """
@@ -89,6 +91,7 @@ class ProcessingTask:
 @dataclass
 class ProcessingStats:
     """Statistics for the processing queue."""
+
     total_processed: int = 0
     successful: int = 0
     failed: int = 0
@@ -110,7 +113,7 @@ class ProcessingStats:
 
 class ProcessingQueueManager:
     """Manages the file processing queue with worker threads.
-    
+
     Features:
     - Thread pool for parallel processing
     - Automatic retry for failed tasks
@@ -124,10 +127,10 @@ class ProcessingQueueManager:
         max_workers: int = 4,
         max_retries: int = 3,
         retry_delay: float = 2.0,
-        completion_callback: Optional[Callable[[str], None]] = None
+        completion_callback: Optional[Callable[[str], None]] = None,
     ):
         """Initialize the queue manager.
-        
+
         Args:
             processor_callback: Function to process each file path.
                                Returns True on success, False on failure.
@@ -157,17 +160,14 @@ class ProcessingQueueManager:
 
     def put(self, file_path: str) -> ProcessingTask:
         """Add a file to the processing queue.
-        
+
         Args:
             file_path: Path to the file to process.
-        
+
         Returns:
             The created ProcessingTask.
         """
-        task = ProcessingTask(
-            file_path=file_path,
-            max_retries=self.max_retries
-        )
+        task = ProcessingTask(file_path=file_path, max_retries=self.max_retries)
 
         with self._tasks_lock:
             self._active_tasks[file_path] = task
@@ -187,16 +187,14 @@ class ProcessingQueueManager:
 
         self._running = True
         self._worker_thread = threading.Thread(
-            target=self._process_loop,
-            daemon=True,
-            name="QueueManager-MainLoop"
+            target=self._process_loop, daemon=True, name="QueueManager-MainLoop"
         )
         self._worker_thread.start()
         logger.info(f"Queue manager started with {self.max_workers} workers")
 
     def stop(self, wait: bool = True, timeout: float = 10.0) -> None:
         """Stop the queue processing.
-        
+
         Args:
             wait: Whether to wait for pending tasks to complete.
             timeout: Maximum time to wait in seconds.
@@ -233,7 +231,7 @@ class ProcessingQueueManager:
 
     def _process_task(self, task: ProcessingTask) -> None:
         """Process a single task.
-        
+
         Args:
             task: The task to process.
         """
@@ -257,7 +255,7 @@ class ProcessingQueueManager:
 
     def _handle_success(self, task: ProcessingTask) -> None:
         """Handle successful task completion.
-        
+
         Args:
             task: The completed task.
         """
@@ -279,7 +277,7 @@ class ProcessingQueueManager:
 
     def _handle_failure(self, task: ProcessingTask, error: str) -> None:
         """Handle task failure with retry logic.
-        
+
         Args:
             task: The failed task.
             error: Error description.
@@ -300,10 +298,7 @@ class ProcessingQueueManager:
             )
 
             # Delay before retry
-            threading.Timer(
-                self.retry_delay,
-                lambda: self.queue.put(task)
-            ).start()
+            threading.Timer(self.retry_delay, lambda: self.queue.put(task)).start()
         else:
             task.mark_failed(error)
 
@@ -321,7 +316,7 @@ class ProcessingQueueManager:
 
     def get_stats(self) -> ProcessingStats:
         """Get current processing statistics.
-        
+
         Returns:
             Copy of current statistics.
         """
@@ -337,7 +332,7 @@ class ProcessingQueueManager:
 
     def get_active_tasks(self) -> List[ProcessingTask]:
         """Get list of currently active tasks.
-        
+
         Returns:
             List of active ProcessingTask objects.
         """
@@ -346,7 +341,7 @@ class ProcessingQueueManager:
 
     def get_queue_size(self) -> int:
         """Get current queue size.
-        
+
         Returns:
             Number of items in queue.
         """
@@ -354,12 +349,9 @@ class ProcessingQueueManager:
 
     def is_idle(self) -> bool:
         """Check if queue manager is idle.
-        
+
         Returns:
             True if no pending or processing tasks.
         """
         with self._stats_lock:
-            return (
-                self.stats.pending == 0 and
-                self.stats.processing == 0
-            )
+            return self.stats.pending == 0 and self.stats.processing == 0
