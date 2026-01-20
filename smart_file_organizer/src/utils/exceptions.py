@@ -46,7 +46,7 @@ class ErrorCode(Enum):
 
 class SmartOrganizerError(Exception):
     """Base exception for all Smart File Organizer errors.
-    
+
     Attributes:
         message: Human-readable error message.
         error_code: Programmatic error code.
@@ -59,10 +59,10 @@ class SmartOrganizerError(Exception):
         message: str,
         error_code: ErrorCode = ErrorCode.UNKNOWN_ERROR,
         details: Optional[dict] = None,
-        cause: Optional[Exception] = None
+        cause: Optional[Exception] = None,
     ):
         """Initialize the exception.
-        
+
         Args:
             message: Human-readable error description.
             error_code: Programmatic error code.
@@ -98,7 +98,7 @@ class SmartOrganizerError(Exception):
 
 class ConfigurationError(SmartOrganizerError):
     """Raised when there's a configuration problem.
-    
+
     Examples:
         - Invalid configuration file format
         - Missing required configuration values
@@ -110,7 +110,7 @@ class ConfigurationError(SmartOrganizerError):
         message: str,
         config_key: Optional[str] = None,
         expected_type: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         details = kwargs.pop("details", {})
         if config_key:
@@ -118,16 +118,13 @@ class ConfigurationError(SmartOrganizerError):
         if expected_type:
             details["expected_type"] = expected_type
         super().__init__(
-            message,
-            error_code=ErrorCode.CONFIGURATION_ERROR,
-            details=details,
-            **kwargs
+            message, error_code=ErrorCode.CONFIGURATION_ERROR, details=details, **kwargs
         )
 
 
 class FileProcessingError(SmartOrganizerError):
     """Raised when file processing fails.
-    
+
     Examples:
         - File cannot be read
         - File is corrupted
@@ -139,22 +136,17 @@ class FileProcessingError(SmartOrganizerError):
         message: str,
         file_path: Optional[str] = None,
         error_code: ErrorCode = ErrorCode.PROCESSING_FAILED,
-        **kwargs
+        **kwargs,
     ):
         details = kwargs.pop("details", {})
         if file_path:
             details["file_path"] = file_path
-        super().__init__(
-            message,
-            error_code=error_code,
-            details=details,
-            **kwargs
-        )
+        super().__init__(message, error_code=error_code, details=details, **kwargs)
 
 
 class ClassificationError(SmartOrganizerError):
     """Raised when file classification fails.
-    
+
     Examples:
         - LLM not available
         - Unable to extract text
@@ -167,24 +159,19 @@ class ClassificationError(SmartOrganizerError):
         file_path: Optional[str] = None,
         tier: Optional[int] = None,
         error_code: ErrorCode = ErrorCode.CLASSIFICATION_FAILED,
-        **kwargs
+        **kwargs,
     ):
         details = kwargs.pop("details", {})
         if file_path:
             details["file_path"] = file_path
         if tier:
             details["classification_tier"] = tier
-        super().__init__(
-            message,
-            error_code=error_code,
-            details=details,
-            **kwargs
-        )
+        super().__init__(message, error_code=error_code, details=details, **kwargs)
 
 
 class ExtractionError(SmartOrganizerError):
     """Raised when text/content extraction fails.
-    
+
     Examples:
         - PDF parsing error
         - OCR failure
@@ -196,7 +183,7 @@ class ExtractionError(SmartOrganizerError):
         message: str,
         file_path: Optional[str] = None,
         extractor_type: Optional[str] = None,
-        **kwargs
+        **kwargs,
     ):
         details = kwargs.pop("details", {})
         if file_path:
@@ -204,16 +191,13 @@ class ExtractionError(SmartOrganizerError):
         if extractor_type:
             details["extractor_type"] = extractor_type
         super().__init__(
-            message,
-            error_code=ErrorCode.EXTRACTION_FAILED,
-            details=details,
-            **kwargs
+            message, error_code=ErrorCode.EXTRACTION_FAILED, details=details, **kwargs
         )
 
 
 class EncryptionError(SmartOrganizerError):
     """Raised when encryption/decryption fails.
-    
+
     Examples:
         - Invalid password
         - Corrupted encrypted file
@@ -226,24 +210,19 @@ class EncryptionError(SmartOrganizerError):
         file_path: Optional[str] = None,
         operation: Optional[str] = None,
         error_code: ErrorCode = ErrorCode.ENCRYPTION_FAILED,
-        **kwargs
+        **kwargs,
     ):
         details = kwargs.pop("details", {})
         if file_path:
             details["file_path"] = file_path
         if operation:
             details["operation"] = operation
-        super().__init__(
-            message,
-            error_code=error_code,
-            details=details,
-            **kwargs
-        )
+        super().__init__(message, error_code=error_code, details=details, **kwargs)
 
 
 class DeduplicationError(SmartOrganizerError):
     """Raised when deduplication operations fail.
-    
+
     Examples:
         - Hash computation failure
         - Index corruption
@@ -256,16 +235,11 @@ class DeduplicationError(SmartOrganizerError):
         file_path: Optional[str] = None,
         hash_type: Optional[str] = None,
         error_code: ErrorCode = ErrorCode.DEDUPLICATION_FAILED,
-        **kwargs
+        **kwargs,
     ):
         details = kwargs.pop("details", {})
         if file_path:
             details["file_path"] = file_path
         if hash_type:
             details["hash_type"] = hash_type
-        super().__init__(
-            message,
-            error_code=error_code,
-            details=details,
-            **kwargs
-        )
+        super().__init__(message, error_code=error_code, details=details, **kwargs)

@@ -26,6 +26,7 @@ def _import_fitz():
     global fitz
     if fitz is None:
         import fitz as _fitz
+
         fitz = _fitz
     return fitz
 
@@ -35,6 +36,7 @@ def _import_docx():
     global Document
     if Document is None:
         from docx import Document as _Document
+
         Document = _Document
     return Document
 
@@ -42,7 +44,7 @@ def _import_docx():
 @dataclass
 class ExtractionResult:
     """Result of text extraction.
-    
+
     Attributes:
         text: Extracted text content.
         metadata: Document metadata.
@@ -50,6 +52,7 @@ class ExtractionResult:
         char_count: Number of characters extracted.
         extraction_method: Method used for extraction.
     """
+
     text: str
     metadata: dict
     page_count: int = 1
@@ -74,13 +77,13 @@ class BaseExtractor(ABC):
     @abstractmethod
     def extract(self, file_path: Path) -> ExtractionResult:
         """Extract text from file.
-        
+
         Args:
             file_path: Path to the file.
-        
+
         Returns:
             ExtractionResult with text and metadata.
-        
+
         Raises:
             ExtractionError: If extraction fails.
         """
@@ -88,10 +91,10 @@ class BaseExtractor(ABC):
 
     def supports(self, file_path: Path) -> bool:
         """Check if this extractor supports the file.
-        
+
         Args:
             file_path: Path to check.
-        
+
         Returns:
             True if file is supported.
         """
@@ -100,7 +103,7 @@ class BaseExtractor(ABC):
 
 class PDFExtractor(BaseExtractor):
     """Extracts text from PDF files using PyMuPDF.
-    
+
     Features:
     - Handles multi-page PDFs
     - Extracts document metadata
@@ -110,7 +113,7 @@ class PDFExtractor(BaseExtractor):
 
     def __init__(self, max_pages: int = 5, max_chars: int = 10000):
         """Initialize PDF extractor.
-        
+
         Args:
             max_pages: Maximum pages to extract from.
             max_chars: Maximum characters to extract.
@@ -120,17 +123,17 @@ class PDFExtractor(BaseExtractor):
 
     @property
     def supported_extensions(self) -> set:
-        return {'.pdf'}
+        return {".pdf"}
 
     def extract(self, file_path: Path) -> ExtractionResult:
         """Extract text from PDF file.
-        
+
         Args:
             file_path: Path to PDF file.
-        
+
         Returns:
             ExtractionResult with extracted text.
-        
+
         Raises:
             ExtractionError: If PDF cannot be processed.
         """
@@ -142,7 +145,7 @@ class PDFExtractor(BaseExtractor):
             raise ExtractionError(
                 f"Failed to open PDF: {e}",
                 file_path=str(file_path),
-                extractor_type="PDF"
+                extractor_type="PDF",
             )
 
         try:
@@ -184,7 +187,7 @@ class PDFExtractor(BaseExtractor):
                 text=combined_text,
                 metadata=metadata,
                 page_count=doc.page_count,
-                extraction_method="PyMuPDF"
+                extraction_method="PyMuPDF",
             )
 
         finally:
@@ -192,10 +195,10 @@ class PDFExtractor(BaseExtractor):
 
     def is_scanned_pdf(self, file_path: Path) -> bool:
         """Check if PDF is likely scanned (no extractable text).
-        
+
         Args:
             file_path: Path to PDF file.
-        
+
         Returns:
             True if PDF appears to be scanned.
         """
@@ -215,23 +218,23 @@ class PDFExtractor(BaseExtractor):
 
 class WordExtractor(BaseExtractor):
     """Extracts text from Word documents using python-docx.
-    
+
     Supports .docx format (not legacy .doc).
     """
 
     @property
     def supported_extensions(self) -> set:
-        return {'.docx'}
+        return {".docx"}
 
     def extract(self, file_path: Path) -> ExtractionResult:
         """Extract text from Word document.
-        
+
         Args:
             file_path: Path to Word document.
-        
+
         Returns:
             ExtractionResult with extracted text.
-        
+
         Raises:
             ExtractionError: If document cannot be processed.
         """
@@ -243,7 +246,7 @@ class WordExtractor(BaseExtractor):
             raise ExtractionError(
                 f"Failed to open Word document: {e}",
                 file_path=str(file_path),
-                extractor_type="Word"
+                extractor_type="Word",
             )
 
         # Extract paragraphs
@@ -253,7 +256,9 @@ class WordExtractor(BaseExtractor):
         table_texts = []
         for table in doc.tables:
             for row in table.rows:
-                row_text = [cell.text.strip() for cell in row.cells if cell.text.strip()]
+                row_text = [
+                    cell.text.strip() for cell in row.cells if cell.text.strip()
+                ]
                 if row_text:
                     table_texts.append(" | ".join(row_text))
 
@@ -271,23 +276,21 @@ class WordExtractor(BaseExtractor):
         }
 
         return ExtractionResult(
-            text=combined_text,
-            metadata=metadata,
-            extraction_method="python-docx"
+            text=combined_text, metadata=metadata, extraction_method="python-docx"
         )
 
 
 class PlainTextExtractor(BaseExtractor):
     """Extracts text from plain text files.
-    
+
     Supports multiple text-based formats including TXT, MD, RST, etc.
     """
 
-    SUPPORTED = {'.txt', '.md', '.markdown', '.rst', '.text', '.log'}
+    SUPPORTED = {".txt", ".md", ".markdown", ".rst", ".text", ".log"}
 
     def __init__(self, max_size: int = 1024 * 1024):  # 1MB default
         """Initialize text extractor.
-        
+
         Args:
             max_size: Maximum file size to read in bytes.
         """
@@ -299,10 +302,10 @@ class PlainTextExtractor(BaseExtractor):
 
     def extract(self, file_path: Path) -> ExtractionResult:
         """Extract text from plain text file.
-        
+
         Args:
             file_path: Path to text file.
-        
+
         Returns:
             ExtractionResult with file content.
         """
@@ -312,14 +315,14 @@ class PlainTextExtractor(BaseExtractor):
         encoding = self._detect_encoding(file_path)
 
         try:
-            with open(file_path, 'r', encoding=encoding) as f:
+            with open(file_path, "r", encoding=encoding) as f:
                 if file_size > self.max_size:
                     text = f.read(self.max_size)
                 else:
                     text = f.read()
         except UnicodeDecodeError:
             # Fallback to latin-1 which accepts any byte sequence
-            with open(file_path, 'r', encoding='latin-1') as f:
+            with open(file_path, "r", encoding="latin-1") as f:
                 text = f.read(self.max_size)
 
         return ExtractionResult(
@@ -329,60 +332,55 @@ class PlainTextExtractor(BaseExtractor):
                 "original_size": file_size,
                 "truncated": file_size > self.max_size,
             },
-            extraction_method="plaintext"
+            extraction_method="plaintext",
         )
 
     def _detect_encoding(self, file_path: Path) -> str:
         """Detect file encoding.
-        
+
         Args:
             file_path: Path to file.
-        
+
         Returns:
             Detected encoding name.
         """
         # Read first chunk and try to detect
         try:
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 raw = f.read(4096)
 
             # Check for BOM
-            if raw.startswith(b'\xef\xbb\xbf'):
-                return 'utf-8-sig'
-            if raw.startswith(b'\xff\xfe'):
-                return 'utf-16-le'
-            if raw.startswith(b'\xfe\xff'):
-                return 'utf-16-be'
+            if raw.startswith(b"\xef\xbb\xbf"):
+                return "utf-8-sig"
+            if raw.startswith(b"\xff\xfe"):
+                return "utf-16-le"
+            if raw.startswith(b"\xfe\xff"):
+                return "utf-16-be"
 
             # Try UTF-8
             try:
-                raw.decode('utf-8')
-                return 'utf-8'
+                raw.decode("utf-8")
+                return "utf-8"
             except UnicodeDecodeError:
                 pass
 
             # Default to latin-1
-            return 'latin-1'
+            return "latin-1"
 
         except Exception:
-            return 'utf-8'
+            return "utf-8"
 
 
 class TextExtractionService:
     """Main text extraction service.
-    
+
     Coordinates multiple extractors to handle different file types.
     Falls back to OCR for scanned documents when needed.
     """
 
-    def __init__(
-        self,
-        max_pages: int = 5,
-        max_chars: int = 10000,
-        ocr_engine = None
-    ):
+    def __init__(self, max_pages: int = 5, max_chars: int = 10000, ocr_engine=None):
         """Initialize the extraction service.
-        
+
         Args:
             max_pages: Maximum pages to extract from PDFs.
             max_chars: Maximum characters to extract.
@@ -397,23 +395,20 @@ class TextExtractionService:
 
     def extract(self, file_path: Path) -> Optional[ExtractionResult]:
         """Extract text from a file.
-        
+
         Args:
             file_path: Path to the file.
-        
+
         Returns:
             ExtractionResult if successful, None if unsupported.
-        
+
         Raises:
             ExtractionError: If extraction fails.
         """
         file_path = Path(file_path)
 
         if not file_path.exists():
-            raise ExtractionError(
-                "File does not exist",
-                file_path=str(file_path)
-            )
+            raise ExtractionError("File does not exist", file_path=str(file_path))
 
         for extractor in self.extractors:
             if extractor.supports(file_path):
@@ -422,9 +417,9 @@ class TextExtractionService:
 
                 # Check if we should fall back to OCR
                 if (
-                    isinstance(extractor, PDFExtractor) and
-                    result.metadata.get("likely_scanned") and
-                    self.ocr_engine is not None
+                    isinstance(extractor, PDFExtractor)
+                    and result.metadata.get("likely_scanned")
+                    and self.ocr_engine is not None
                 ):
                     logger.info(f"Falling back to OCR for scanned PDF: {file_path}")
                     return self._extract_with_ocr(file_path)
@@ -436,10 +431,10 @@ class TextExtractionService:
 
     def _extract_with_ocr(self, file_path: Path) -> ExtractionResult:
         """Extract text using OCR.
-        
+
         Args:
             file_path: Path to the file.
-        
+
         Returns:
             ExtractionResult from OCR.
         """
@@ -447,18 +442,16 @@ class TextExtractionService:
         if self.ocr_engine:
             text = self.ocr_engine.extract_from_pdf(file_path)
             return ExtractionResult(
-                text=text,
-                metadata={"ocr_applied": True},
-                extraction_method="OCR"
+                text=text, metadata={"ocr_applied": True}, extraction_method="OCR"
             )
         return ExtractionResult(text="", metadata={}, extraction_method="none")
 
     def supports(self, file_path: Path) -> bool:
         """Check if any extractor supports the file.
-        
+
         Args:
             file_path: Path to check.
-        
+
         Returns:
             True if file is supported.
         """

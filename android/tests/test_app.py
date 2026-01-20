@@ -5,32 +5,37 @@ import os
 from pathlib import Path
 
 # Add project root to path
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
+
 
 # Mock Kivy
 # We need to make sure App class is usable
 class MockApp:
-    def run(self): pass
-    def build(self): pass
+    def run(self):
+        pass
 
-sys.modules['kivy'] = MagicMock()
+    def build(self):
+        pass
+
+
+sys.modules["kivy"] = MagicMock()
 kivy_app_module = MagicMock()
 kivy_app_module.App = MockApp
-sys.modules['kivy.app'] = kivy_app_module
+sys.modules["kivy.app"] = kivy_app_module
 
-sys.modules['kivy.uix.boxlayout'] = MagicMock()
-sys.modules['kivy.uix.button'] = MagicMock()
-sys.modules['kivy.uix.label'] = MagicMock()
-sys.modules['kivy.uix.scrollview'] = MagicMock()
-sys.modules['kivy.uix.textinput'] = MagicMock()
-sys.modules['kivy.uix.filechooser'] = MagicMock()
-sys.modules['kivy.uix.popup'] = MagicMock()
-sys.modules['kivy.uix.spinner'] = MagicMock()
-sys.modules['kivy.clock'] = MagicMock()
-sys.modules['kivy.utils'] = MagicMock()
-sys.modules['android'] = MagicMock()
-sys.modules['android.permissions'] = MagicMock()
+sys.modules["kivy.uix.boxlayout"] = MagicMock()
+sys.modules["kivy.uix.button"] = MagicMock()
+sys.modules["kivy.uix.label"] = MagicMock()
+sys.modules["kivy.uix.scrollview"] = MagicMock()
+sys.modules["kivy.uix.textinput"] = MagicMock()
+sys.modules["kivy.uix.filechooser"] = MagicMock()
+sys.modules["kivy.uix.popup"] = MagicMock()
+sys.modules["kivy.uix.spinner"] = MagicMock()
+sys.modules["kivy.clock"] = MagicMock()
+sys.modules["kivy.utils"] = MagicMock()
+sys.modules["android"] = MagicMock()
+sys.modules["android.permissions"] = MagicMock()
 
 # Import the app to test
 # We need to import main as a module, but 'android' is also a system module name often used in Kivy/Buildozer environments
@@ -39,13 +44,17 @@ sys.modules['android.permissions'] = MagicMock()
 # Or just use relative import if possible.
 
 import importlib.util
-spec = importlib.util.spec_from_file_location("main", os.path.join(os.path.dirname(__file__), "../main.py"))
+
+spec = importlib.util.spec_from_file_location(
+    "main", os.path.join(os.path.dirname(__file__), "../main.py")
+)
 android_main = importlib.util.module_from_spec(spec)
 sys.modules["main"] = android_main
 spec.loader.exec_module(android_main)
 OrganizerApp = android_main.OrganizerApp
 
 # from android.main import OrganizerApp
+
 
 class TestAndroidApp(unittest.TestCase):
     def setUp(self):
@@ -65,13 +74,21 @@ class TestAndroidApp(unittest.TestCase):
         layout = self.app.build()
         self.assertTrue(layout)
 
-    @patch('main.Config')
-    @patch('main.RulesEngine')
-    @patch('main.FileOperations')
-    @patch('main.Tier1Classifier')
-    @patch('pathlib.Path.exists', return_value=True)
-    @patch('pathlib.Path.iterdir')
-    def test_run_organizer(self, mock_iterdir, mock_exists, MockClassifier, MockFileOps, MockRulesEngine, MockConfig):
+    @patch("main.Config")
+    @patch("main.RulesEngine")
+    @patch("main.FileOperations")
+    @patch("main.Tier1Classifier")
+    @patch("pathlib.Path.exists", return_value=True)
+    @patch("pathlib.Path.iterdir")
+    def test_run_organizer(
+        self,
+        mock_iterdir,
+        mock_exists,
+        MockClassifier,
+        MockFileOps,
+        MockRulesEngine,
+        MockConfig,
+    ):
         """Test the organizer logic."""
         # Setup mocks
         mock_file = MagicMock()
@@ -82,7 +99,7 @@ class TestAndroidApp(unittest.TestCase):
 
         # Mock engine behaviors
         engine_instance = MockRulesEngine.return_value
-        engine_instance.evaluate.return_value = None # No custom rule match
+        engine_instance.evaluate.return_value = None  # No custom rule match
 
         classifier_instance = MockClassifier.return_value
         classification_result = MagicMock()
@@ -117,9 +134,10 @@ class TestAndroidApp(unittest.TestCase):
 
         # Actually checking if self.log was called is hard because we didn't mock self.log
         # But we can check if threading was NOT started.
-        with patch('threading.Thread') as mock_thread:
+        with patch("threading.Thread") as mock_thread:
             self.app.start_organization(None)
             mock_thread.assert_not_called()
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

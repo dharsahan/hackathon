@@ -28,6 +28,7 @@ def _import_tesseract():
     global pytesseract
     if pytesseract is None:
         import pytesseract as _pytesseract
+
         pytesseract = _pytesseract
     return pytesseract
 
@@ -37,6 +38,7 @@ def _import_pil():
     global Image
     if Image is None:
         from PIL import Image as _Image
+
         Image = _Image
     return Image
 
@@ -47,6 +49,7 @@ def _import_cv2():
     if cv2 is None:
         import cv2 as _cv2
         import numpy as _np
+
         cv2 = _cv2
         np = _np
     return cv2, np
@@ -57,6 +60,7 @@ def _import_pdf2image():
     global pdf2image
     if pdf2image is None:
         import pdf2image as _pdf2image
+
         pdf2image = _pdf2image
     return pdf2image
 
@@ -64,7 +68,7 @@ def _import_pdf2image():
 @dataclass
 class OCRConfig:
     """OCR engine configuration.
-    
+
     Attributes:
         languages: Tesseract language codes (e.g., "eng", "eng+fra").
         dpi: DPI for PDF to image conversion.
@@ -73,6 +77,7 @@ class OCRConfig:
         psm: Page segmentation mode (0-13).
         oem: OCR Engine Mode (0-3).
     """
+
     languages: str = "eng"
     dpi: int = 300
     enable_preprocessing: bool = True
@@ -87,17 +92,17 @@ class OCRConfig:
 
 class ImagePreprocessor:
     """Image preprocessing for improved OCR accuracy.
-    
+
     Applies various filters and transformations to make text more readable.
     """
 
     @staticmethod
-    def preprocess(image) -> 'np.ndarray':
+    def preprocess(image) -> "np.ndarray":
         """Apply preprocessing pipeline to image.
-        
+
         Args:
             image: OpenCV image array (BGR).
-        
+
         Returns:
             Preprocessed image (grayscale).
         """
@@ -114,12 +119,7 @@ class ImagePreprocessor:
 
         # Adaptive thresholding for varying lighting conditions
         binary = cv2.adaptiveThreshold(
-            blurred,
-            255,
-            cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-            cv2.THRESH_BINARY,
-            11,
-            2
+            blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2
         )
 
         # Denoise
@@ -128,12 +128,12 @@ class ImagePreprocessor:
         return denoised
 
     @staticmethod
-    def deskew(image) -> 'np.ndarray':
+    def deskew(image) -> "np.ndarray":
         """Correct skew in scanned documents.
-        
+
         Args:
             image: Grayscale image array.
-        
+
         Returns:
             Deskewed image.
         """
@@ -160,23 +160,19 @@ class ImagePreprocessor:
             center = (w // 2, h // 2)
             M = cv2.getRotationMatrix2D(center, angle, 1.0)
             rotated = cv2.warpAffine(
-                image,
-                M,
-                (w, h),
-                flags=cv2.INTER_CUBIC,
-                borderMode=cv2.BORDER_REPLICATE
+                image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE
             )
             return rotated
 
         return image
 
     @staticmethod
-    def remove_shadows(image) -> 'np.ndarray':
+    def remove_shadows(image) -> "np.ndarray":
         """Remove shadows from document images.
-        
+
         Args:
             image: BGR image array.
-        
+
         Returns:
             Shadow-corrected image.
         """
@@ -196,7 +192,7 @@ class ImagePreprocessor:
 
 class OCREngine:
     """OCR engine using Tesseract.
-    
+
     Features:
     - Image preprocessing for improved accuracy
     - PDF page conversion
@@ -206,7 +202,7 @@ class OCREngine:
 
     def __init__(self, config: Optional[OCRConfig] = None):
         """Initialize OCR engine.
-        
+
         Args:
             config: OCR configuration. Uses defaults if not provided.
         """
@@ -224,13 +220,13 @@ class OCREngine:
 
     def extract_text(self, image_path: Path) -> str:
         """Extract text from an image file.
-        
+
         Args:
             image_path: Path to the image.
-        
+
         Returns:
             Extracted text.
-        
+
         Raises:
             ExtractionError: If OCR fails.
         """
@@ -246,7 +242,7 @@ class OCREngine:
                 raise ExtractionError(
                     "Failed to load image",
                     file_path=str(image_path),
-                    extractor_type="OCR"
+                    extractor_type="OCR",
                 )
 
             # Apply preprocessing if enabled
@@ -263,7 +259,7 @@ class OCREngine:
                 pil_image,
                 lang=self.config.languages,
                 timeout=self.config.timeout,
-                config=self.config.to_tesseract_config()
+                config=self.config.to_tesseract_config(),
             )
 
             return text.strip()
@@ -271,24 +267,18 @@ class OCREngine:
         except Exception as e:
             logger.error(f"OCR failed for {image_path}: {e}")
             raise ExtractionError(
-                f"OCR failed: {e}",
-                file_path=str(image_path),
-                extractor_type="OCR"
+                f"OCR failed: {e}", file_path=str(image_path), extractor_type="OCR"
             )
 
-    def extract_from_pdf(
-        self,
-        pdf_path: Path,
-        max_pages: int = 5
-    ) -> str:
+    def extract_from_pdf(self, pdf_path: Path, max_pages: int = 5) -> str:
         """Extract text from PDF using OCR.
-        
+
         Converts PDF pages to images and performs OCR on each.
-        
+
         Args:
             pdf_path: Path to PDF file.
             max_pages: Maximum pages to process.
-        
+
         Returns:
             Combined extracted text.
         """
@@ -300,10 +290,7 @@ class OCREngine:
         try:
             # Convert PDF pages to images
             images = pdf2image.convert_from_path(
-                pdf_path,
-                dpi=self.config.dpi,
-                first_page=1,
-                last_page=max_pages
+                pdf_path, dpi=self.config.dpi, first_page=1, last_page=max_pages
             )
 
             text_parts = []
@@ -329,7 +316,7 @@ class OCREngine:
                     pil_processed,
                     lang=self.config.languages,
                     timeout=self.config.timeout,
-                    config=self.config.to_tesseract_config()
+                    config=self.config.to_tesseract_config(),
                 )
 
                 if text.strip():
@@ -340,14 +327,12 @@ class OCREngine:
         except Exception as e:
             logger.error(f"PDF OCR failed for {pdf_path}: {e}")
             raise ExtractionError(
-                f"PDF OCR failed: {e}",
-                file_path=str(pdf_path),
-                extractor_type="OCR"
+                f"PDF OCR failed: {e}", file_path=str(pdf_path), extractor_type="OCR"
             )
 
     def is_available(self) -> bool:
         """Check if OCR engine is available.
-        
+
         Returns:
             True if Tesseract is installed and accessible.
         """

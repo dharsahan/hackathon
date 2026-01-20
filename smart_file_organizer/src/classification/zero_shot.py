@@ -26,6 +26,7 @@ def _import_transformers():
     if pipeline is None:
         try:
             from transformers import pipeline as _pipeline
+
             pipeline = _pipeline
         except ImportError:
             pipeline = False
@@ -35,13 +36,14 @@ def _import_transformers():
 @dataclass
 class ZeroShotResult:
     """Result from zero-shot classification.
-    
+
     Attributes:
         labels: List of predicted labels.
         scores: List of corresponding scores.
         best_label: Highest scoring label.
         best_score: Highest score.
     """
+
     labels: List[str]
     scores: List[float]
     best_label: str
@@ -59,7 +61,7 @@ class ZeroShotResult:
 
 class ZeroShotClassifier:
     """Zero-shot classifier using transformers.
-    
+
     Uses pretrained NLI models for classification without task-specific training.
     """
 
@@ -103,10 +105,10 @@ class ZeroShotClassifier:
         self,
         model: str = "facebook/bart-large-mnli",
         device: int = -1,  # -1 for CPU, 0 for GPU
-        max_length: int = 512
+        max_length: int = 512,
     ):
         """Initialize zero-shot classifier.
-        
+
         Args:
             model: HuggingFace model name.
             device: Device to use (-1 for CPU).
@@ -120,7 +122,7 @@ class ZeroShotClassifier:
 
     def _load_model(self) -> bool:
         """Load the classification model.
-        
+
         Returns:
             True if model loaded successfully.
         """
@@ -136,9 +138,7 @@ class ZeroShotClassifier:
         try:
             logger.info(f"Loading zero-shot model: {self.model_name}")
             self._classifier = pipeline(
-                "zero-shot-classification",
-                model=self.model_name,
-                device=self.device
+                "zero-shot-classification", model=self.model_name, device=self.device
             )
             self._is_loaded = True
             logger.info("Zero-shot model loaded successfully")
@@ -150,7 +150,7 @@ class ZeroShotClassifier:
 
     def is_available(self) -> bool:
         """Check if classifier is available.
-        
+
         Returns:
             True if model can be loaded.
         """
@@ -160,15 +160,15 @@ class ZeroShotClassifier:
         self,
         text: str,
         candidate_labels: Optional[List[str]] = None,
-        multi_label: bool = False
+        multi_label: bool = False,
     ) -> Optional[ZeroShotResult]:
         """Classify text using zero-shot classification.
-        
+
         Args:
             text: Text to classify.
             candidate_labels: Labels to classify against.
             multi_label: Allow multiple labels.
-        
+
         Returns:
             ZeroShotResult if successful.
         """
@@ -182,36 +182,32 @@ class ZeroShotClassifier:
 
         # Truncate text if needed
         if len(text) > self.max_length * 4:  # Rough character limit
-            text = text[:self.max_length * 4]
+            text = text[: self.max_length * 4]
 
         try:
             result = self._classifier(
-                text,
-                candidate_labels=labels,
-                multi_label=multi_label
+                text, candidate_labels=labels, multi_label=multi_label
             )
 
             return ZeroShotResult(
-                labels=result['labels'],
-                scores=result['scores'],
-                best_label=result['labels'][0],
-                best_score=result['scores'][0]
+                labels=result["labels"],
+                scores=result["scores"],
+                best_label=result["labels"][0],
+                best_score=result["scores"][0],
             )
         except Exception as e:
             logger.error(f"Zero-shot classification failed: {e}")
             return None
 
     def classify_with_result(
-        self,
-        text: str,
-        tier1_result: Optional[ClassificationResult] = None
+        self, text: str, tier1_result: Optional[ClassificationResult] = None
     ) -> ClassificationResult:
         """Classify and return as ClassificationResult.
-        
+
         Args:
             text: Document text.
             tier1_result: Optional previous tier result.
-        
+
         Returns:
             ClassificationResult with zero-shot classification.
         """
@@ -219,20 +215,19 @@ class ZeroShotClassifier:
 
         if not zs_result:
             if tier1_result:
-                tier1_result.metadata['zero_shot_failed'] = True
+                tier1_result.metadata["zero_shot_failed"] = True
                 return tier1_result
             return ClassificationResult(
                 category=FileCategory.DOCUMENTS,
                 subcategory="Unknown",
                 confidence=0.5,
                 classification_tier=3,
-                metadata={'zero_shot_failed': True}
+                metadata={"zero_shot_failed": True},
             )
 
         # Map best label to category
         category_info = self.LABEL_TO_CATEGORY.get(
-            zs_result.best_label,
-            ("Other", "General")
+            zs_result.best_label, ("Other", "General")
         )
 
         is_sensitive = zs_result.best_label in self.SENSITIVE_LABELS
@@ -245,18 +240,18 @@ class ZeroShotClassifier:
             is_sensitive=is_sensitive,
             needs_deeper_analysis=False,
             metadata={
-                'zero_shot_label': zs_result.best_label,
-                'all_labels': dict(zip(zs_result.labels[:5], zs_result.scores[:5])),
+                "zero_shot_label": zs_result.best_label,
+                "all_labels": dict(zip(zs_result.labels[:5], zs_result.scores[:5])),
             },
-            suggested_folder=f"Documents/{category_info[0]}/{category_info[1]}"
+            suggested_folder=f"Documents/{category_info[0]}/{category_info[1]}",
         )
 
     def classify_sensitivity(self, text: str) -> tuple:
         """Classify document sensitivity level.
-        
+
         Args:
             text: Document text.
-        
+
         Returns:
             Tuple of (is_sensitive, sensitivity_score, sensitivity_type).
         """

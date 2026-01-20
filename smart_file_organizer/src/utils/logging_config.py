@@ -24,7 +24,7 @@ _thread_local = threading.local()
 
 def get_correlation_id() -> str:
     """Get the current correlation ID for the thread."""
-    if not hasattr(_thread_local, 'correlation_id'):
+    if not hasattr(_thread_local, "correlation_id"):
         _thread_local.correlation_id = str(uuid.uuid4())[:8]
     return _thread_local.correlation_id
 
@@ -52,13 +52,13 @@ class JSONFormatter(logging.Formatter):
             log_data["exception"] = self.formatException(record.exc_info)
 
         # Add extra fields
-        if hasattr(record, 'file_path'):
+        if hasattr(record, "file_path"):
             log_data["file_path"] = record.file_path
-        if hasattr(record, 'category'):
+        if hasattr(record, "category"):
             log_data["category"] = record.category
-        if hasattr(record, 'operation'):
+        if hasattr(record, "operation"):
             log_data["operation"] = record.operation
-        if hasattr(record, 'duration_ms'):
+        if hasattr(record, "duration_ms"):
             log_data["duration_ms"] = record.duration_ms
 
         return json.dumps(log_data)
@@ -68,18 +68,18 @@ class ConsoleFormatter(logging.Formatter):
     """Human-readable colored console formatter."""
 
     COLORS = {
-        'DEBUG': '\033[36m',     # Cyan
-        'INFO': '\033[32m',      # Green
-        'WARNING': '\033[33m',   # Yellow
-        'ERROR': '\033[31m',     # Red
-        'CRITICAL': '\033[35m',  # Magenta
+        "DEBUG": "\033[36m",  # Cyan
+        "INFO": "\033[32m",  # Green
+        "WARNING": "\033[33m",  # Yellow
+        "ERROR": "\033[31m",  # Red
+        "CRITICAL": "\033[35m",  # Magenta
     }
-    RESET = '\033[0m'
+    RESET = "\033[0m"
 
     def format(self, record: logging.LogRecord) -> str:
         """Format with colors for console output."""
-        color = self.COLORS.get(record.levelname, '')
-        timestamp = datetime.now().strftime('%H:%M:%S')
+        color = self.COLORS.get(record.levelname, "")
+        timestamp = datetime.now().strftime("%H:%M:%S")
 
         # Build the message
         msg = f"{color}[{timestamp}] {record.levelname:8}{self.RESET} "
@@ -95,8 +95,11 @@ class ConsoleFormatter(logging.Formatter):
 @dataclass
 class LoggingConfig:
     """Configuration for the logging system."""
+
     level: str = "INFO"
-    log_dir: Path = field(default_factory=lambda: Path.home() / ".smart_organizer" / "logs")
+    log_dir: Path = field(
+        default_factory=lambda: Path.home() / ".smart_organizer" / "logs"
+    )
     console_output: bool = True
     file_output: bool = True
     json_format: bool = False  # Use JSON for console
@@ -106,7 +109,7 @@ class LoggingConfig:
 
 def setup_logging(config: Optional[LoggingConfig] = None) -> None:
     """Set up the logging system.
-    
+
     Args:
         config: Logging configuration. Uses defaults if not provided.
     """
@@ -138,7 +141,7 @@ def setup_logging(config: Optional[LoggingConfig] = None) -> None:
             log_file,
             maxBytes=config.max_file_size,
             backupCount=config.backup_count,
-            encoding='utf-8'
+            encoding="utf-8",
         )
         file_handler.setFormatter(JSONFormatter())
         root_logger.addHandler(file_handler)
@@ -149,10 +152,10 @@ def setup_logging(config: Optional[LoggingConfig] = None) -> None:
 
 def get_logger(name: str) -> logging.Logger:
     """Get a logger for a specific module.
-    
+
     Args:
         name: Name of the module (typically __name__).
-    
+
     Returns:
         Logger instance with the correct prefix.
     """
@@ -166,7 +169,7 @@ class LogContext:
 
     def __init__(self, logger: logging.Logger, **context):
         """Initialize with context fields.
-        
+
         Args:
             logger: Logger to add context to.
             **context: Key-value pairs to add to log records.
@@ -202,7 +205,7 @@ class Timer:
 
     def __init__(self, logger: logging.Logger, operation: str):
         """Initialize timer.
-        
+
         Args:
             logger: Logger to log the duration to.
             operation: Name of the operation being timed.
@@ -214,12 +217,14 @@ class Timer:
     def __enter__(self):
         """Start the timer."""
         import time
+
         self.start_time = time.perf_counter()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Stop the timer and log the duration."""
         import time
+
         duration_ms = (time.perf_counter() - self.start_time) * 1000
 
         old_factory = logging.getLogRecordFactory()

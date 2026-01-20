@@ -12,6 +12,7 @@ from typing import Dict, Tuple, Optional, Set
 
 class FileCategory(Enum):
     """Main file categories for organization."""
+
     DOCUMENTS = "Documents"
     IMAGES = "Images"
     AUDIO = "Audio"
@@ -27,6 +28,7 @@ class FileCategory(Enum):
 
 class DocumentSubcategory(Enum):
     """Document subcategories for deeper classification."""
+
     PDF = "PDF"
     WORD = "Word"
     EXCEL = "Excel"
@@ -45,6 +47,7 @@ class DocumentSubcategory(Enum):
 
 class ImageSubcategory(Enum):
     """Image subcategories."""
+
     PHOTO = "Photos"
     SCREENSHOT = "Screenshots"
     ARTWORK = "Artwork"
@@ -55,6 +58,7 @@ class ImageSubcategory(Enum):
 
 class AudioSubcategory(Enum):
     """Audio subcategories."""
+
     MUSIC = "Music"
     PODCAST = "Podcasts"
     AUDIOBOOK = "Audiobooks"
@@ -64,6 +68,7 @@ class AudioSubcategory(Enum):
 
 class VideoSubcategory(Enum):
     """Video subcategories."""
+
     MOVIE = "Movies"
     TV_SHOW = "TV Shows"
     SCREEN_RECORDING = "Screen Recordings"
@@ -73,7 +78,7 @@ class VideoSubcategory(Enum):
 @dataclass
 class CategoryMapping:
     """Mapping of file extensions to categories and subcategories.
-    
+
     Provides comprehensive mapping for quick Tier 1 classification.
     """
 
@@ -181,13 +186,29 @@ class CategoryMapping:
         }
 
         self.ARCHIVE_EXTENSIONS = {
-            ".zip", ".rar", ".7z", ".tar", ".gz", ".bz2",
-            ".xz", ".tgz", ".tbz2", ".lz", ".lzma",
+            ".zip",
+            ".rar",
+            ".7z",
+            ".tar",
+            ".gz",
+            ".bz2",
+            ".xz",
+            ".tgz",
+            ".tbz2",
+            ".lz",
+            ".lzma",
         }
 
         self.INSTALLER_EXTENSIONS = {
-            ".exe", ".msi", ".dmg", ".pkg", ".deb",
-            ".rpm", ".appimage", ".snap", ".flatpak",
+            ".exe",
+            ".msi",
+            ".dmg",
+            ".pkg",
+            ".deb",
+            ".rpm",
+            ".appimage",
+            ".snap",
+            ".flatpak",
         }
 
         self.CODE_EXTENSIONS = {
@@ -245,19 +266,28 @@ class CategoryMapping:
         }
 
         self.EBOOK_EXTENSIONS = {
-            ".epub", ".mobi", ".azw", ".azw3", ".fb2", ".djvu",
+            ".epub",
+            ".mobi",
+            ".azw",
+            ".azw3",
+            ".fb2",
+            ".djvu",
         }
 
         self.FONT_EXTENSIONS = {
-            ".ttf", ".otf", ".woff", ".woff2", ".eot",
+            ".ttf",
+            ".otf",
+            ".woff",
+            ".woff2",
+            ".eot",
         }
 
     def get_category(self, extension: str) -> Tuple[FileCategory, Optional[str]]:
         """Get category and subcategory for a file extension.
-        
+
         Args:
             extension: File extension including the dot (e.g., ".pdf").
-        
+
         Returns:
             Tuple of (FileCategory, subcategory_string or None).
         """

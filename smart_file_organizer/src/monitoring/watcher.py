@@ -28,14 +28,14 @@ logger = get_logger(__name__)
 
 class DebounceTracker:
     """Tracks file events for debouncing.
-    
+
     Prevents multiple rapid events for the same file from triggering
     multiple processing attempts.
     """
 
     def __init__(self, debounce_seconds: float = 1.0):
         """Initialize the debounce tracker.
-        
+
         Args:
             debounce_seconds: Minimum time between events for the same file.
         """
@@ -45,10 +45,10 @@ class DebounceTracker:
 
     def should_process(self, file_path: str) -> bool:
         """Check if enough time has passed since the last event.
-        
+
         Args:
             file_path: Path to the file.
-        
+
         Returns:
             True if the file should be processed, False to skip.
         """
@@ -62,7 +62,7 @@ class DebounceTracker:
 
     def clear(self, file_path: str) -> None:
         """Remove a file from the pending tracker.
-        
+
         Args:
             file_path: Path to the file to remove.
         """
@@ -77,7 +77,7 @@ class DebounceTracker:
 
 class FileSettlingChecker:
     """Ensures files are fully written before processing.
-    
+
     Monitors file size stability to detect when a file has finished
     being written to disk.
     """
@@ -87,16 +87,16 @@ class FileSettlingChecker:
         file_path: Path,
         check_interval: float = 0.5,
         max_checks: int = 10,
-        stability_checks: int = 2
+        stability_checks: int = 2,
     ) -> bool:
         """Check if file size is stable (file is fully written).
-        
+
         Args:
             file_path: Path to the file to check.
             check_interval: Time between size checks in seconds.
             max_checks: Maximum number of checks before giving up.
             stability_checks: Number of consecutive stable readings required.
-        
+
         Returns:
             True if file is ready for processing.
         """
@@ -115,7 +115,7 @@ class FileSettlingChecker:
                     if stable_count >= stability_checks:
                         # Try to open the file to verify it's not locked
                         try:
-                            with open(file_path, 'rb') as f:
+                            with open(file_path, "rb") as f:
                                 f.read(1)
                             return True
                         except (OSError, IOError):
@@ -136,31 +136,27 @@ class FileSettlingChecker:
 
     @staticmethod
     def wait_for_file(
-        file_path: Path,
-        timeout: float = 30.0,
-        check_interval: float = 0.5
+        file_path: Path, timeout: float = 30.0, check_interval: float = 0.5
     ) -> bool:
         """Wait for a file to become ready.
-        
+
         Args:
             file_path: Path to the file.
             timeout: Maximum time to wait in seconds.
             check_interval: Time between checks.
-        
+
         Returns:
             True if file is ready, False if timeout occurred.
         """
         max_checks = int(timeout / check_interval)
         return FileSettlingChecker.is_file_ready(
-            file_path,
-            check_interval=check_interval,
-            max_checks=max_checks
+            file_path, check_interval=check_interval, max_checks=max_checks
         )
 
 
 class OrganizerEventHandler(FileSystemEventHandler):
     """Custom event handler for file organization.
-    
+
     Filters events based on ignore patterns and handles debouncing
     before enqueuing files for processing.
     """
@@ -169,10 +165,10 @@ class OrganizerEventHandler(FileSystemEventHandler):
         self,
         processing_queue: Queue,
         config: WatcherConfig,
-        settling_checker: Optional[FileSettlingChecker] = None
+        settling_checker: Optional[FileSettlingChecker] = None,
     ):
         """Initialize the event handler.
-        
+
         Args:
             processing_queue: Queue to add files for processing.
             config: Watcher configuration.
@@ -188,25 +184,22 @@ class OrganizerEventHandler(FileSystemEventHandler):
 
     def _should_ignore(self, file_path: str) -> bool:
         """Check if file matches ignore patterns.
-        
+
         Args:
             file_path: Path to check.
-        
+
         Returns:
             True if file should be ignored.
         """
         name = Path(file_path).name
-        return any(
-            fnmatch(name, pattern)
-            for pattern in self.config.ignore_patterns
-        )
+        return any(fnmatch(name, pattern) for pattern in self.config.ignore_patterns)
 
     def _is_already_processing(self, file_path: str) -> bool:
         """Check if file is already being processed.
-        
+
         Args:
             file_path: Path to check.
-        
+
         Returns:
             True if file is currently being processed.
         """
@@ -215,10 +208,10 @@ class OrganizerEventHandler(FileSystemEventHandler):
 
     def _mark_processing(self, file_path: str) -> bool:
         """Mark a file as being processed.
-        
+
         Args:
             file_path: Path to mark.
-        
+
         Returns:
             True if successfully marked, False if already processing.
         """
@@ -230,7 +223,7 @@ class OrganizerEventHandler(FileSystemEventHandler):
 
     def mark_complete(self, file_path: str) -> None:
         """Mark a file as complete (no longer processing).
-        
+
         Args:
             file_path: Path to mark as complete.
         """
@@ -240,7 +233,7 @@ class OrganizerEventHandler(FileSystemEventHandler):
 
     def _handle_file_event(self, file_path: str) -> None:
         """Handle a file event after validation.
-        
+
         Args:
             file_path: Path to the file.
         """
@@ -281,7 +274,7 @@ class OrganizerEventHandler(FileSystemEventHandler):
 
     def on_created(self, event) -> None:
         """Handle file creation events.
-        
+
         Args:
             event: Filesystem event.
         """
@@ -293,10 +286,10 @@ class OrganizerEventHandler(FileSystemEventHandler):
 
     def on_modified(self, event) -> None:
         """Handle file modification events.
-        
+
         We only process modifications for files we haven't seen yet,
         to handle cases where the created event was missed.
-        
+
         Args:
             event: Filesystem event.
         """
@@ -312,18 +305,14 @@ class OrganizerEventHandler(FileSystemEventHandler):
 
 class FileWatcherService:
     """Main watcher service that monitors directories.
-    
+
     Manages the watchdog Observer and handles starting/stopping
     the monitoring service.
     """
 
-    def __init__(
-        self,
-        config: WatcherConfig,
-        processing_queue: Queue
-    ):
+    def __init__(self, config: WatcherConfig, processing_queue: Queue):
         """Initialize the watcher service.
-        
+
         Args:
             config: Watcher configuration.
             processing_queue: Queue to add files for processing.
@@ -341,7 +330,7 @@ class FileWatcherService:
 
     def start(self) -> None:
         """Start watching configured directories.
-        
+
         Raises:
             RuntimeError: If no valid directories to watch.
         """
@@ -349,9 +338,7 @@ class FileWatcherService:
         for directory in self.config.watch_directories:
             if directory.exists() and directory.is_dir():
                 self.observer.schedule(
-                    self.handler,
-                    str(directory),
-                    recursive=self.config.recursive
+                    self.handler, str(directory), recursive=self.config.recursive
                 )
                 valid_dirs.append(directory)
                 logger.info(f"Watching directory: {directory}")
@@ -375,11 +362,8 @@ class FileWatcherService:
 
     def get_watched_directories(self) -> List[Path]:
         """Get list of directories being watched.
-        
+
         Returns:
             List of directory paths.
         """
-        return [
-            d for d in self.config.watch_directories
-            if d.exists() and d.is_dir()
-        ]
+        return [d for d in self.config.watch_directories if d.exists() and d.is_dir()]

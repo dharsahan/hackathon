@@ -15,9 +15,12 @@ from kivy.clock import Clock
 from kivy.utils import platform
 
 # On Android, we need to request permissions
-if platform == 'android':
+if platform == "android":
     from android.permissions import request_permissions, Permission
-    request_permissions([Permission.WRITE_EXTERNAL_STORAGE, Permission.READ_EXTERNAL_STORAGE])
+
+    request_permissions(
+        [Permission.WRITE_EXTERNAL_STORAGE, Permission.READ_EXTERNAL_STORAGE]
+    )
 
     # Request MANAGE_EXTERNAL_STORAGE for Android 11+
     # This requires user to go to settings, so we usually fire an intent.
@@ -25,16 +28,18 @@ if platform == 'android':
         from jnius import autoclass
         from android import activity
 
-        Environment = autoclass('android.os.Environment')
+        Environment = autoclass("android.os.Environment")
         if Environment.isExternalStorageManager():
             pass
         else:
-            Intent = autoclass('android.content.Intent')
-            Settings = autoclass('android.provider.Settings')
-            Uri = autoclass('android.net.Uri')
+            Intent = autoclass("android.content.Intent")
+            Settings = autoclass("android.provider.Settings")
+            Uri = autoclass("android.net.Uri")
 
             # API 30+
-            if Environment.isExternalStorageLegacy(): # Just a check, logic is complicated here
+            if (
+                Environment.isExternalStorageLegacy()
+            ):  # Just a check, logic is complicated here
                 pass
 
             # We try to open settings
@@ -59,6 +64,7 @@ try:
 except ImportError:
     # Fallback for development/testing if structure is different
     import sys
+
     sys.path.append("..")
     from smart_file_organizer.src.config import Config
     from smart_file_organizer.src.actions.rules_engine import RulesEngine
@@ -72,15 +78,19 @@ class OrganizerApp(App):
         self.title = "Smart File Organizer"
 
         # Main layout
-        layout = BoxLayout(orientation='vertical', padding=10, spacing=10)
+        layout = BoxLayout(orientation="vertical", padding=10, spacing=10)
 
         # Header
-        header = Label(text="Smart File Organizer", font_size=24, size_hint_y=None, height=50)
+        header = Label(
+            text="Smart File Organizer", font_size=24, size_hint_y=None, height=50
+        )
         layout.add_widget(header)
 
         # Path selection
-        path_layout = BoxLayout(orientation='horizontal', size_hint_y=None, height=40)
-        self.path_input = TextInput(text="/storage/emulated/0/Download", multiline=False)
+        path_layout = BoxLayout(orientation="horizontal", size_hint_y=None, height=40)
+        self.path_input = TextInput(
+            text="/storage/emulated/0/Download", multiline=False
+        )
         path_layout.add_widget(self.path_input)
 
         browse_btn = Button(text="Browse", size_hint_x=None, width=80)
@@ -105,8 +115,8 @@ class OrganizerApp(App):
         # Scroll to bottom? (Kivy TextInput usually handles this if cursor moved)
 
     def show_file_chooser(self, instance):
-        content = BoxLayout(orientation='vertical')
-        file_chooser = FileChooserIconView(path='/storage/emulated/0/')
+        content = BoxLayout(orientation="vertical")
+        file_chooser = FileChooserIconView(path="/storage/emulated/0/")
 
         btn_layout = BoxLayout(size_hint_y=None, height=50)
         select_btn = Button(text="Select")
@@ -139,6 +149,7 @@ class OrganizerApp(App):
 
         # Run in background to avoid freezing UI
         import threading
+
         t = threading.Thread(target=self.run_organizer, args=(target_dir,))
         t.start()
 
@@ -149,22 +160,28 @@ class OrganizerApp(App):
 
             # Load config (might fail if config.yaml not found, so we should create default)
             try:
-                config = Config.load(Path(target_dir) / "config.yaml") # Try loading from target dir?
+                config = Config.load(
+                    Path(target_dir) / "config.yaml"
+                )  # Try loading from target dir?
             except Exception:
-                config = Config() # Use defaults
+                config = Config()  # Use defaults
 
             # Setup directories
             config.organization.base_directory = Path(target_dir) / "Organized"
 
             # Initialize engines
-            rules_engine = RulesEngine(base_directory=config.organization.base_directory)
+            rules_engine = RulesEngine(
+                base_directory=config.organization.base_directory
+            )
             file_ops = FileOperations(base_directory=config.organization.base_directory)
             classifier = Tier1Classifier()
 
             # Manually scan and organize
             target_path = Path(target_dir)
             if not target_path.exists():
-                Clock.schedule_once(lambda dt: self.log(f"Error: Path {target_dir} does not exist."))
+                Clock.schedule_once(
+                    lambda dt: self.log(f"Error: Path {target_dir} does not exist.")
+                )
                 return
 
             files = [f for f in target_path.iterdir() if f.is_file()]
@@ -173,7 +190,9 @@ class OrganizerApp(App):
             count = 0
             for file_path in files:
                 try:
-                    Clock.schedule_once(lambda dt, f=file_path: self.log(f"Processing {f.name}..."))
+                    Clock.schedule_once(
+                        lambda dt, f=file_path: self.log(f"Processing {f.name}...")
+                    )
 
                     # 1. Check custom rules
                     classification = rules_engine.evaluate(file_path)
@@ -184,33 +203,51 @@ class OrganizerApp(App):
 
                     # 3. Move file
                     if classification:
-                        category = classification.category.value if hasattr(classification.category, 'value') else str(classification.category)
+                        category = (
+                            classification.category.value
+                            if hasattr(classification.category, "value")
+                            else str(classification.category)
+                        )
                         subcategory = classification.subcategory
 
                         dest_path = file_ops.get_destination_path(
                             category=category,
                             subcategory=subcategory,
-                            use_date=config.organization.use_date_folders
+                            use_date=config.organization.use_date_folders,
                         )
 
                         # Execute move
                         new_path = file_ops.move_file(file_path, dest_path)
-                        Clock.schedule_once(lambda dt, f=file_path.name, n=new_path: self.log(f"Moved {f} -> {n}"))
+                        Clock.schedule_once(
+                            lambda dt, f=file_path.name, n=new_path: self.log(
+                                f"Moved {f} -> {n}"
+                            )
+                        )
                         count += 1
                     else:
-                        Clock.schedule_once(lambda dt, f=file_path.name: self.log(f"Skipped {f} (unknown)"))
+                        Clock.schedule_once(
+                            lambda dt, f=file_path.name: self.log(
+                                f"Skipped {f} (unknown)"
+                            )
+                        )
 
                 except Exception as e:
-                    Clock.schedule_once(lambda dt, err=str(e): self.log(f"Error processing file: {err}"))
+                    Clock.schedule_once(
+                        lambda dt, err=str(e): self.log(f"Error processing file: {err}")
+                    )
 
-            Clock.schedule_once(lambda dt, c=count: self.log(f"Organization complete. Moved {c} files."))
+            Clock.schedule_once(
+                lambda dt, c=count: self.log(f"Organization complete. Moved {c} files.")
+            )
 
             Clock.schedule_once(lambda dt: self.log("Organization complete."))
 
         except Exception as e:
             import traceback
+
             err = traceback.format_exc()
             Clock.schedule_once(lambda dt: self.log(f"Critical Error: {err}"))
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     OrganizerApp().run()
