@@ -313,7 +313,13 @@ class DeduplicationEngine:
 
         # Stage 3: Full hash for confirmation
         # Potential duplicate found by partial hash. Now we need full hashes.
-        full_hash = self.full_hasher.compute(file_path)
+        # Optimization: For small files, the partial hash IS the full hash.
+        # This avoids re-reading and re-hashing the file.
+        if file_size <= self.partial_hasher.chunk_size * 3:
+            full_hash = partial_hash
+        else:
+            full_hash = self.full_hasher.compute(file_path)
+
         result.full_hash = full_hash
         self._path_to_full_hash[file_path] = full_hash
 
@@ -323,7 +329,14 @@ class DeduplicationEngine:
             if candidate not in self._path_to_full_hash:
                 # Lazy computation of candidate's full hash
                 try:
-                    candidate_hash = self.full_hasher.compute(candidate)
+                    # Apply same optimization for candidates
+                    # Since they have same partial hash, they have similar structure
+                    # But we should rely on their size (which we know matches file_size if in this bucket)
+                    if file_size <= self.partial_hasher.chunk_size * 3:
+                        candidate_hash = self._path_to_partial_hash[candidate]
+                    else:
+                        candidate_hash = self.full_hasher.compute(candidate)
+
                     self._path_to_full_hash[candidate] = candidate_hash
                     if candidate_hash not in self._full_hash_index:
                         self._full_hash_index[candidate_hash] = candidate
