@@ -73,7 +73,7 @@ class PartialHasher:
         """
         self.chunk_size = chunk_size
 
-    def compute(self, file_path: Path) -> str:
+    def compute(self, file_path: Path, file_size: Optional[int] = None) -> str:
         """Compute partial hash of a file.
         
         For files smaller than 3 chunks, computes full hash.
@@ -81,6 +81,7 @@ class PartialHasher:
         
         Args:
             file_path: Path to the file.
+            file_size: Optional file size to avoid stat call.
         
         Returns:
             Hexadecimal hash string.
@@ -88,14 +89,15 @@ class PartialHasher:
         Raises:
             DeduplicationError: If file cannot be read.
         """
-        try:
-            file_size = file_path.stat().st_size
-        except OSError as e:
-            raise DeduplicationError(
-                f"Cannot stat file: {e}",
-                file_path=str(file_path),
-                hash_type="partial"
-            )
+        if file_size is None:
+            try:
+                file_size = file_path.stat().st_size
+            except OSError as e:
+                raise DeduplicationError(
+                    f"Cannot stat file: {e}",
+                    file_path=str(file_path),
+                    hash_type="partial"
+                )
 
         # For small files, just compute full hash
         if file_size <= self.chunk_size * 3:
@@ -275,7 +277,7 @@ class DeduplicationEngine:
             return result
 
         # Stage 2: Partial hash comparison
-        partial_hash = self.partial_hasher.compute(file_path)
+        partial_hash = self.partial_hasher.compute(file_path, file_size=file_size)
         result.partial_hash = partial_hash
         self._path_to_partial_hash[file_path] = partial_hash
 
@@ -287,7 +289,7 @@ class DeduplicationEngine:
             for candidate in candidates:
                 # Candidates in _files_pending_partial definitely need hashing
                 try:
-                    c_partial_hash = self.partial_hasher.compute(candidate)
+                    c_partial_hash = self.partial_hasher.compute(candidate, file_size=file_size)
                     self._path_to_partial_hash[candidate] = c_partial_hash
                     if c_partial_hash not in self._partial_hash_index:
                         self._partial_hash_index[c_partial_hash] = []
@@ -384,7 +386,7 @@ class DeduplicationEngine:
         file_path = Path(file_path)
         file_size = file_path.stat().st_size
 
-        partial_hash = self.partial_hasher.compute(file_path)
+        partial_hash = self.partial_hasher.compute(file_path, file_size=file_size)
         full_hash = self.full_hasher.compute(file_path)
 
         # Add to indexes
